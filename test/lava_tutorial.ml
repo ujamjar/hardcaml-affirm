@@ -1,7 +1,13 @@
 (* verification examples from the chalmers lava tutorial *)
 
 #require "hardcaml";;
-#mod_use "src/NuSMV.ml";;
+#directory "_build/src";;
+#load "HardCamlAffirm.cma";;
+
+open HardCamlAffirm
+
+open HardCaml.Signal.Comb
+open HardCaml.Signal.Seq
 
 open HardCaml.Signal.Comb
 
@@ -125,15 +131,18 @@ let a8,b8 = input "a" 8, input "b" 8
 
 let test=int_of_string Sys.argv.(1)
 let () = 
-  let write props = NuSMV.write print_string (HardCaml.Circuit.make "test" props) in
+  let write prop = 
+    let circ = NuSMV.make "test" [] [ `CTL Props.CTL.(ag (p prop)) ]  in
+    NuSMV.write print_string circ 
+  in
   match test with
-  | 0 -> write [ prop_HalfAddOutputNeverBothTrue (a,b) ]
-  | 1 -> write [ prop_FullAddCommutative (cin,(a,b)) ]
-  | 2 -> write [ prop_EquivAdders8 (a8,b8) ]
-  | 3 -> write [ prop_AdderCommutative (a8,b8) ]
-  | 4 -> write [ prop_ToggleEdgeIdentity a ]
-  | 5 -> write [ prop_SameAdderSeq (a,b) ]
-  | 6 -> write [ prop_ToggleTogglesWhenHigh a ]
-  | 7 -> write [ prop_Toggle_vs_Puls ]
+  | 0 -> write @@ prop_HalfAddOutputNeverBothTrue (a,b) 
+  | 1 -> write @@ prop_FullAddCommutative (cin,(a,b)) 
+  | 2 -> write @@ prop_EquivAdders8 (a8,b8) 
+  | 3 -> write @@ prop_AdderCommutative (a8,b8) 
+  | 4 -> write @@ prop_ToggleEdgeIdentity a 
+  | 5 -> write @@ prop_SameAdderSeq (a,b) 
+  | 6 -> write @@ prop_ToggleTogglesWhenHigh a 
+  | 7 -> write @@ prop_Toggle_vs_Puls 
   | _ -> print_string "NO TEST\n"
 

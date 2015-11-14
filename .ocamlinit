@@ -1,3 +1,6 @@
 #require "hardcaml";;
-#use "src/NuSMV.ml";;
+#directory "_build/src";;
+#load "HardCamlAffirm.cma";;
+
+open HardCamlAffirm;;
 

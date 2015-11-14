@@ -1,8 +1,12 @@
 (* A retimed circuit - registers are moved around, but the functionality is the same *)
 
 #require "hardcaml";;
-#use "src/NuSMV.ml";;
+#directory "_build/src";;
+#load "HardCamlAffirm.cma";;
 
+open HardCamlAffirm
+
+open HardCaml.Signal.Comb
 open HardCaml.Signal.Seq
 
 let reg = reg r_full empty
@@ -22,7 +26,10 @@ let prop =
   let a, b = input "a" 8, input "b" 8 in
   output "prop" ((t0 a b) ==: (t1 a b))
 
-let circ = HardCaml.Circuit.make "testme" [prop]
+let circ = NuSMV.make "testme" [] [ 
+  `LTL Props.LTL.(g (p prop));
+  `CTL Props.CTL.(ag (p prop));
+]
 
-let () = write print_string circ
+let () = NuSMV.write print_string circ
 

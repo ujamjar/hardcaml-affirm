@@ -4,7 +4,39 @@ open HardCaml
 open Signal.Types
 open Signal.Comb
 
-let write os circ = 
+type property = [ `LTL of Props.LTL.path | `CTL of Props.CTL.state ]
+type circuit = HardCaml.Circuit.t * property list
+type io = string -> unit
+
+let make name outputs props = 
+
+  let module S = Set.Make(struct
+    open HardCaml.Signal.Types
+    type t = signal
+    let compare a b = compare (uid a) (uid b)
+  end) in
+
+  let props' = 
+    List.fold_left 
+      (fun set prop ->
+        let ap = 
+          match prop with
+          | `LTL prop -> Props.LTL.atomic_propositions prop
+          | `CTL prop -> Props.CTL.atomic_propositions prop
+        in
+        List.fold_left (fun set ap -> S.add ap set) set ap)
+      S.empty props
+  in
+
+  let ap = S.elements props' in
+  let outputs = 
+    match ap with
+    | [] -> outputs
+    | _ -> (output "__the_atomic_propositions" @@ HardCaml.Signal.Comb.concat ap) :: outputs 
+  in
+  HardCaml.Circuit.make name outputs, props
+
+let write os (circ, props) = 
   let inputs, outputs = Circuit.inputs circ, Circuit.outputs circ in
   let is_internal s = not (Circuit.is_input circ s) && 
                       not (Circuit.is_output circ s) && 
@@ -132,5 +164,9 @@ let write os circ =
   List.iter define outputs;
 
   os ("\n-- SPECS\n");
-  List.iter (fun o -> os ("CTLSPEC AG bool(" ^ name o ^ ");\n")) outputs
+  List.iter 
+    (function
+      | `CTL p -> os ("CTLSPEC " ^ Props.CTL.to_string p ^ ";\n")
+      | `LTL p -> os ("LTLSPEC " ^ Props.LTL.to_string p ^ ";\n"))
+    props
 
