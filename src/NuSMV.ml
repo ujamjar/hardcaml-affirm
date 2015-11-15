@@ -106,16 +106,16 @@ let write os (circ, props) =
         os "  esac;\n";
       in
       match op with
-      | Signal_add -> define s (op2 "+" s)
-      | Signal_sub -> define s (op2 "-" s)
-      | Signal_mulu -> define s (op2 "*" s)
-      | Signal_muls -> define s (sop2 "*" s)
-      | Signal_and -> define s (op2 "&" s)
-      | Signal_or -> define s (op2 "|" s)
+      | Signal_add -> define s (op2 " + " s)
+      | Signal_sub -> define s (op2 " - " s)
+      | Signal_mulu -> define s (op2 " * " s)
+      | Signal_muls -> define s (sop2 " * " s)
+      | Signal_and -> define s (op2 " & " s)
+      | Signal_or -> define s (op2 " | " s)
       | Signal_xor -> define s (op2 " xor " s)
-      | Signal_eq -> define s (comp "=" s)
+      | Signal_eq -> define s (comp " = " s)
       | Signal_not -> define s (not_ s)
-      | Signal_lt -> define s (comp "<" s)
+      | Signal_lt -> define s (comp " < " s)
       | Signal_cat -> define s (cat s)
       | Signal_mux -> mux s
     end
