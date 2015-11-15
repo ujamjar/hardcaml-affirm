@@ -104,6 +104,8 @@ module LTL = struct
 
   let rec to_string ?(name=name) p = 
     match p with
+    | U(True,b) -> "(F " ^ to_string b ^ ")"
+    | Not(U(True,Not(p))) -> "(G " ^ to_string p ^ ")"
     | True -> "TRUE"
     | P ap -> name ap
     | And(a,b) -> "(" ^ to_string a ^ " & " ^ to_string b ^ ")"
