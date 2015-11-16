@@ -13,7 +13,6 @@ open HardCamlAffirm
 open HardCaml.Signal.Comb
 open HardCaml.Signal.Seq
 
-open HardCaml.Signal.Comb
 module B = HardCaml.Bits.Comb.IntbitsList
 
 let binop (op,bop) w = 

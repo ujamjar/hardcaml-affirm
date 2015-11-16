@@ -9,8 +9,6 @@ open HardCamlAffirm
 open HardCaml.Signal.Comb
 open HardCaml.Signal.Seq
 
-open HardCaml.Signal.Comb
-
 (* 2.1 *)
 let halfAdd (a,b) = a ^: b, a &: b
 

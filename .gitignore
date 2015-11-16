@@ -1,3 +1,8 @@
 *~
 .*.swp
 _build/
+*.smv
+setup.data
+setup.log
+docs/
+mkdocs.yml

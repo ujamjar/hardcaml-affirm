@@ -15,7 +15,7 @@ Library HardCamlAffirm
   Path:          src
   Findlibname:   hardcaml-affirm
   Pack:          true
-  Modules:       Props, NuSMV
+  Modules:       Props, Dimacs, NuSMV
   BuildDepends:  hardcaml
   XMETARequires: hardcaml
 
