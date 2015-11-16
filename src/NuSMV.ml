@@ -85,7 +85,7 @@ let write os (circ, props) =
       let signed, unsigned = wrap "signed", wrap "unsigned" in
       let bool, word1 = wrap "bool", wrap "word1" in
       let sop2 op s = unsigned @@ (signed (ndep 0)) ^ op ^ (signed (ndep 1)) in
-      let comp op s = word1 (op2 "=" s) in
+      let comp op s = word1 (op2 op s) in
       let not_ s = "!" ^ name (dep 0) in 
       let cat s = String.concat "::" @@ List.map name (deps s) in
       let mux _ =
