@@ -83,7 +83,15 @@ let write os (circ, props) =
       let op2 op s = ndep 0 ^ op ^ ndep 1 in
       let wrap s t = s ^ "(" ^ t ^ ")" in
       let signed, unsigned = wrap "signed", wrap "unsigned" in
+      let extend n s = wrap "extend" (s ^ ", " ^ string_of_int n) in
       let bool, word1 = wrap "bool", wrap "word1" in
+      let mop2 sgn op s =
+        let a, b = dep 0, dep 1 in
+        let w = width a + width b in
+        let ewa, ewb = w - width a, w - width b in
+        let signed = if sgn then signed else (fun s -> s) in
+        (extend ewa @@ signed @@ name a) ^ op ^ (extend ewb @@ signed @@ name b) 
+      in
       let sop2 op s = unsigned @@ (signed (ndep 0)) ^ op ^ (signed (ndep 1)) in
       let comp op s = word1 (op2 op s) in
       let not_ s = "!" ^ name (dep 0) in 
@@ -108,8 +116,8 @@ let write os (circ, props) =
       match op with
       | Signal_add -> define s (op2 " + " s)
       | Signal_sub -> define s (op2 " - " s)
-      | Signal_mulu -> define s (op2 " * " s)
-      | Signal_muls -> define s (sop2 " * " s)
+      | Signal_mulu -> define s (mop2 false " * " s)
+      | Signal_muls -> define s (mop2 true  " * " s)
       | Signal_and -> define s (op2 " & " s)
       | Signal_or -> define s (op2 " | " s)
       | Signal_xor -> define s (op2 " xor " s)
