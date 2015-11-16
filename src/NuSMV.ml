@@ -89,10 +89,13 @@ let write os (circ, props) =
         let a, b = dep 0, dep 1 in
         let w = width a + width b in
         let ewa, ewb = w - width a, w - width b in
-        let signed = if sgn then signed else (fun s -> s) in
-        (extend ewa @@ signed @@ name a) ^ op ^ (extend ewb @@ signed @@ name b) 
+        let signed,unsigned = 
+          (if sgn then signed else (fun s -> s)), 
+          (if sgn then unsigned else (fun s -> s))
+        in
+        let arg w a = unsigned @@ extend w @@ signed @@ name a in
+        (arg ewa a) ^ op ^ (arg ewb b)
       in
-      let sop2 op s = unsigned @@ (signed (ndep 0)) ^ op ^ (signed (ndep 1)) in
       let comp op s = word1 (op2 op s) in
       let not_ s = "!" ^ name (dep 0) in 
       let cat s = String.concat "::" @@ List.map name (deps s) in
