@@ -15,7 +15,7 @@ let binop name op opb n m =
   let (--) a b = a -- (name ^ "_" ^ b) in
   let input n b = input (name ^ "_" ^ n) b in
   let a, b = input "a" n, input "b" m in
-  (((op a b) -- "reference") ==: ((opb a b) -- "dimacs")) -- "prop"
+  (((op a b) -- "reference") ==: (concat (opb (bits a) (bits b)) -- "dimacs")) -- "prop"
 
 let binop2 name op opb = [
   (binop (name^"1") op opb 1 1);
@@ -37,7 +37,7 @@ let muxop name op opb ws lm wm =
   let input n b = input (name ^ "_" ^ n) b in
   let sel = (input "sel" ws) in
   let d = Array.to_list @@ Array.init lm (fun i -> srand wm) in
-  ((op sel d -- "reference") ==: (opb sel d -- "dimacs")) -- "prop"
+  ((op sel d -- "reference") ==: (concat (opb (bits sel) (List.map bits d)) -- "dimacs")) -- "prop"
 
 let muxops = [
   muxop "mux121" mux Dimacs.Comb.mux 1 2 1;

@@ -2,5 +2,6 @@
 #directory "_build/src";;
 #load "HardCamlAffirm.cma";;
 
+open HardCaml;;
 open HardCamlAffirm;;
 
