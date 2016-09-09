@@ -359,11 +359,12 @@ let unroll ~k circ =
     let s = List.tl s in
     List.fold_left 
       (fun acc s ->
-        List.fold_left2 
-          (fun acc (u0,s0) (u1,s1) ->
-            assert (u0=u1);
-            acc &: (s0 ==: s1)) 
-          acc k s) 
+        acc |: 
+          List.fold_left2 
+            (fun acc (u0,s0) (u1,s1) ->
+              assert (u0=u1);
+              acc &: (s0 ==: s1)) 
+            vdd k s) 
       vdd s
   in
   c, loop_k, Array.of_list @@ List.rev @@ o

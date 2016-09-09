@@ -102,6 +102,7 @@ module LTL = struct
   let (&:) a b = And(a,b)
   let (|:) a b = Or(a,b)
   let (~:) a = Not(a)
+  let (==>:) a b = (~: a) |: b
   let rec x ?(n=1) s = if n=0 then s else X (x ~n:(n-1) s)
   let u a b = U(a,b)
   let (--) = u
@@ -162,6 +163,7 @@ module LTL = struct
     (* negative *)
     | Not(True) -> x
     | Not(P x) -> Pn(x)
+    | Not(Pn x) -> P(x)
     | Not(And(a,b)) -> nnf (~: a) |: nnf (~: b)  (* demorgans *)
     | Not(Or(a,b)) -> nnf (~: a) &: nnf (~: b)  
     | Not(Not(a)) -> nnf a

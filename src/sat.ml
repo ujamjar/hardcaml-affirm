@@ -9,6 +9,7 @@ module Make(S : sig
     val concat : t list -> t
     val wire : int -> t
     val (<==) : t -> t -> unit
+    val (--) : t -> string -> t
     val (~:) : t -> t 
     val (&:) : t -> t -> t
     val (|:) : t -> t -> t
@@ -113,7 +114,6 @@ struct
         in
         build (bits_lsb s) d
 
-  let (--) s n = s
   let to_bstr _ = failwith "to_bstr"
   let to_int _ = failwith "to_int"
   let to_string _ = failwith "to_string"
@@ -153,12 +153,13 @@ end
 
 type uid = int
 type terms = int list list
+type wire_name = (string * int) list ref
 type 'a sat = 
   (* tracking sat clauses *)
   | P of uid * terms
   | C of uid * terms * 'a sat list
   (* wires *)
-  | W of uid * terms ref * 'a sat ref 
+  | W of uid * wire_name * terms ref * 'a sat ref 
   | E
 
 type relabelled
@@ -177,7 +178,7 @@ module Sat = struct
   let get_uid = function 
     | P(uid,_) -> uid 
     | C(uid,_,_) -> uid
-    | W(uid,_,_) -> uid 
+    | W(uid,_,_,_) -> uid 
     | E -> failwith "uid of empty signal"
 
   let gnd = let uid = uid () in P(uid, bfalse uid)
@@ -231,18 +232,27 @@ module Sat = struct
   let (^:) = List.map2 bxor 
 
   let wire n = 
-    Array.to_list @@ Array.init n (fun i -> W(uid(), ref [], ref E))
+    Array.to_list @@ Array.init n (fun i -> W(uid(), ref [], ref [], ref E))
 
   let (<==) a b = 
     assert (width a = width b);
     List.iter2 
       (fun a b ->
         match a with
-        | W(uid, t, r) -> begin
+        | W(uid, names, t, r) -> begin
           t := bwire uid (get_uid b);
           r := b 
         end
         | _ -> failwith "not a wire") a b
+
+  let name_bit s n b = 
+    match s with 
+    | W(_,names,_,_) -> begin names := (n,b) :: !names; s end
+    | _ -> s
+
+  let (--) s n = 
+    let w = width s in
+    List.mapi (fun i s -> name_bit s n (w-i-1)) s
 
 end
 
@@ -281,10 +291,10 @@ let relabel s =
       in
       let map, uid, terms = relabel_terms map uid terms in
       map, C(uid, terms, List.rev args)
-    | W(uid, terms, arg) ->
+    | W(uid, names, terms, arg) ->
       let map, arg = relabel map !arg in
       let map, uid, terms = relabel_terms map uid !terms in
-      map, W(uid, ref terms, ref arg)
+      map, W(uid, names, ref terms, ref arg)
     | E -> map, E
   in
   snd @@ relabel M.empty s
@@ -296,19 +306,31 @@ let nterms s =
     match s with
     | P (uid, terms) -> sum_terms terms
     | C (uid, terms, args) -> sum_terms terms + sum_args args
-    | W (uid, terms, arg) -> sum_terms !terms + sum_args [!arg]
+    | W (uid, _, terms, arg) -> sum_terms !terms + sum_args [!arg]
     | E -> 0
   in
   count s
 
 let nvars s = Sat.get_uid s
 
+type name_map = (string * int) list M.t
+
+let rec name_map map s = 
+  match s with
+  | P(_ ) -> map
+  | C(_, _, args) -> 
+    List.fold_left (fun map arg -> name_map map arg) map args
+  | W(uid, names, _, arg) ->
+    let map = if !names <> [] then M.add uid !names map else map in
+    name_map map !arg
+  | E -> map
+
 let rec fold f a = function 
   | P(_, terms) -> f a terms
   | C(_, terms, args) -> 
     let a = f a terms in
     List.fold_left (fun a t -> fold f a t) a args
-  | W(_, terms, arg) -> 
+  | W(_, _, terms, arg) -> 
     let a = f a !terms in
     fold f a !arg
   | E -> a
