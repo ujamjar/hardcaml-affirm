@@ -43,22 +43,31 @@ module LTL : sig
   type path =
     | True
     | P of atomic_proposition
+    | Pn of atomic_proposition
     | And of path * path
+    | Or of path * path
     | Not of path
     | X of path
     | U of path * path
+    | R of path * path
 
-  val t : path
+  val vdd : path
+  val gnd : path
   val p : atomic_proposition -> path
   val ( &: ) : path -> path -> path
+  val ( |: ) : path -> path -> path
   val ( ~: ) : path -> path
   val x : ?n:int -> path -> path
   val u : path -> path -> path
   val ( -- ) : path -> path -> path
+  val r : path -> path -> path
   val f : path -> path
   val g : path -> path
+  val w : path -> path -> path
 
   val to_string : ?name:(atomic_proposition -> string) -> path -> string
   val atomic_propositions : path -> atomic_proposition list
+  val nnf : path -> path
+
 end
 

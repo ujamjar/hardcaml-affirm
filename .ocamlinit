@@ -5,3 +5,49 @@
 open HardCaml;;
 open HardCamlAffirm;;
 
+module Test = struct
+  (* some test definitions *)
+
+  open Signal.Comb
+  open Signal.Seq
+
+  (* inputs *)
+  let a = input "a" 4
+  let b = input "b" 4
+  let c = input "c" 8
+  let d = input "d" 8
+
+  (* test functions *)
+  let add1 = (sresize (a +: b) 8) +: c
+  let reg1 = reg r_full enable add1
+  let out1 = reg1 +: d 
+
+  let is_30 = output "is_30" (out1 ==:. 30)
+
+  (* circuits *)
+  let circ1 = [ output "x" add1 ]
+  let circ2 = [ output "x" reg1 ]
+
+  let x = input "x" 1
+  let y = input "y" 1
+  let z = ((ue x) +: (ue y)) ==:. 3
+
+  let ltl = Props.LTL.(f (p is_30))
+  let compiled = Bmc.compile_ltl ~k:2 ~ltl 
+
+end
+
+module Test2 = struct
+
+  open Signal.Comb
+  open Signal.Seq
+
+  let test k = 
+    let x = reg_fb r_none empty 2 (fun d -> d +:. 1) in
+    let is_3 = output "is_3" (x ==:. 1) in
+    let ltl = Props.LTL.(f (p is_3)) in
+    let compiled = Bmc.compile_ltl ~k ~ltl in
+    Dimacs.(run @@ convert compiled)
+
+end
+

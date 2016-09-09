@@ -86,21 +86,29 @@ module LTL = struct
   type path = 
     | True 
     | P of atomic_proposition 
+    | Pn of atomic_proposition 
     | And of path * path 
+    | Or of path * path
     | Not of path 
     | X of path 
     | U of path * path 
+    | R of path * path 
+    (*| F of path 
+    | G of path*)
 
-  let t = True
+  let vdd = True
+  let gnd = Not True
   let p ap = P ap
   let (&:) a b = And(a,b)
+  let (|:) a b = Or(a,b)
   let (~:) a = Not(a)
   let rec x ?(n=1) s = if n=0 then s else X (x ~n:(n-1) s)
   let u a b = U(a,b)
   let (--) = u
-
-  let f p = t -- p
+  let r a b = R(a,b)
+  let f p = vdd -- p
   let g p = ~: (f (~: p))
+  let w p q = (u p q) |: (g p)
 
   let rec to_string ?(name=name) p = 
     match p with
@@ -108,18 +116,62 @@ module LTL = struct
     | Not(U(True,Not(p))) -> "(G " ^ to_string p ^ ")"
     | True -> "TRUE"
     | P ap -> name ap
+    | Pn ap -> "(!" ^ to_string (P ap) ^ ")"
     | And(a,b) -> "(" ^ to_string a ^ " & " ^ to_string b ^ ")"
+    | Or(a,b) -> "(" ^ to_string a ^ " | " ^ to_string b ^ ")"
     | Not(a) -> "(!" ^ to_string a ^ ")"
     | X(p) -> "(X " ^ to_string p ^ ")"
     | U(a,b) -> "(" ^ to_string a ^ " U " ^ to_string b ^ ")"
+    | R(a,b) -> "(" ^ to_string a ^ " V " ^ to_string b ^ ")" (* XXX I think? weak release? *)
+    (*| F(p) -> "(F " ^ to_string p ^ ")"
+    | G(p) -> "(G " ^ to_string p ^ ")"*)
 
   let rec atomic_propositions = function
     | True -> []
     | P ap -> [ap]
+    | Pn ap -> [ap]
     | And(a,b) -> atomic_propositions a @ atomic_propositions b
+    | Or(a,b) -> atomic_propositions a @ atomic_propositions b
     | Not(a) -> atomic_propositions a
     | X(p) -> atomic_propositions p
     | U(a,b) -> atomic_propositions a @ atomic_propositions b
+    | R(a,b) -> atomic_propositions a @ atomic_propositions b
+    (*| F(p) -> atomic_propositions p
+    | G(p) -> atomic_propositions p*)
+
+  (* demorgan's law: ~(a & b) = (~a | ~b)
+                     ~(a | b) = (~a & ~b)
+
+        without an OR primitive we must then expand with (a | b) = ~( ~a & ~b )
+        which gives us back a not gate (undoes the initial simplification).
+
+     Similarly using 'r' defined in terms of 'u' *)
+  let rec nnf x = 
+    match x with
+    (* positive *)
+    | True 
+    | P _ -> x
+    | Pn _ -> x
+    | And(a,b) -> And(nnf a, nnf b)
+    | Or(a,b) -> Or(nnf a, nnf b)
+    | X(a) -> X(nnf a)
+    | U(a,b) -> U(nnf a, nnf b)
+    | R(a,b) -> R(nnf a, nnf b)
+    (*| F a -> F(nnf a)
+    | G a -> G(nnf a)*)
+    (* negative *)
+    | Not(True) -> x
+    | Not(P x) -> Pn(x)
+    | Not(And(a,b)) -> nnf (~: a) |: nnf (~: b)  (* demorgans *)
+    | Not(Or(a,b)) -> nnf (~: a) &: nnf (~: b)  
+    | Not(Not(a)) -> nnf a
+    | Not(X p) -> X (nnf (Not p))
+    | Not(U(a,b)) -> R(nnf (~: a), nnf (~: b))
+    | Not(R(a,b)) -> U(nnf (~: a), nnf (~: b))
+    (*| Not(F a) -> G(nnf (~: a))
+    | Not(G a) -> F(nnf (~: a))*)
 
 end
+
+
 

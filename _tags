@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 4df3f276e32fec929096667580aafc4c)
+# DO NOT EDIT (digest: b746325c34622e2d5c949bdf15eb2698)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -17,7 +17,9 @@ true: annot, bin_annot
 # Library HardCamlAffirm
 "src/HardCamlAffirm.cmxs": use_HardCamlAffirm
 "src/props.cmx": for-pack(HardCamlAffirm)
+"src/sat.cmx": for-pack(HardCamlAffirm)
 "src/dimacs.cmx": for-pack(HardCamlAffirm)
 "src/NuSMV.cmx": for-pack(HardCamlAffirm)
+"src/bmc.cmx": for-pack(HardCamlAffirm)
 <src/*.ml{,i,y}>: pkg_hardcaml
 # OASIS_STOP
