@@ -93,8 +93,8 @@ module LTL = struct
     | X of path 
     | U of path * path 
     | R of path * path 
-    (*| F of path 
-    | G of path*)
+    | F of path 
+    | G of path
 
   let vdd = True
   let gnd = Not True
@@ -107,8 +107,10 @@ module LTL = struct
   let u a b = U(a,b)
   let (--) = u
   let r a b = R(a,b)
-  let f p = vdd -- p
-  let g p = ~: (f (~: p))
+  (*let f p = vdd -- p
+  let g p = ~: (f (~: p))*)
+  let f p = F p
+  let g p = G p
   let w p q = (u p q) |: (g p)
 
   let rec to_string ?(name=name) p = 
@@ -124,8 +126,8 @@ module LTL = struct
     | X(p) -> "(X " ^ to_string p ^ ")"
     | U(a,b) -> "(" ^ to_string a ^ " U " ^ to_string b ^ ")"
     | R(a,b) -> "(" ^ to_string a ^ " V " ^ to_string b ^ ")" (* XXX I think? weak release? *)
-    (*| F(p) -> "(F " ^ to_string p ^ ")"
-    | G(p) -> "(G " ^ to_string p ^ ")"*)
+    | F(p) -> "(F " ^ to_string p ^ ")"
+    | G(p) -> "(G " ^ to_string p ^ ")"
 
   let rec atomic_propositions = function
     | True -> []
@@ -137,8 +139,21 @@ module LTL = struct
     | X(p) -> atomic_propositions p
     | U(a,b) -> atomic_propositions a @ atomic_propositions b
     | R(a,b) -> atomic_propositions a @ atomic_propositions b
-    (*| F(p) -> atomic_propositions p
-    | G(p) -> atomic_propositions p*)
+    | F(p) -> atomic_propositions p
+    | G(p) -> atomic_propositions p
+
+  let rec depth = function
+    | True -> 0
+    | P ap -> 0
+    | Pn ap -> 0
+    | And(a,b) -> max (depth a) (depth b)
+    | Or(a,b) -> max (depth a) (depth b)
+    | Not(a) -> depth a
+    | X(p) -> 1 + depth p
+    | U(a,b) -> max (depth a) (depth b)
+    | R(a,b) -> max (depth a) (depth b)
+    | F(p) -> depth p
+    | G(p) -> depth p
 
   (* demorgan's law: ~(a & b) = (~a | ~b)
                      ~(a | b) = (~a & ~b)
@@ -158,8 +173,8 @@ module LTL = struct
     | X(a) -> X(nnf a)
     | U(a,b) -> U(nnf a, nnf b)
     | R(a,b) -> R(nnf a, nnf b)
-    (*| F a -> F(nnf a)
-    | G a -> G(nnf a)*)
+    | F a -> F(nnf a)
+    | G a -> G(nnf a)
     (* negative *)
     | Not(True) -> x
     | Not(P x) -> Pn(x)
@@ -170,8 +185,23 @@ module LTL = struct
     | Not(X p) -> X (nnf (Not p))
     | Not(U(a,b)) -> R(nnf (~: a), nnf (~: b))
     | Not(R(a,b)) -> U(nnf (~: a), nnf (~: b))
-    (*| Not(F a) -> G(nnf (~: a))
-    | Not(G a) -> F(nnf (~: a))*)
+    | Not(F a) -> G(nnf (~: a))
+    | Not(G a) -> F(nnf (~: a))
+
+  let limit_depth k x = 
+    let rec f i x = 
+      match x with
+      | X p -> if i<k then f (i+1) p else Not(True)
+      | True | P _ | Pn _ -> x
+      | And(a,b) -> And(f i a, f i b)
+      | Or(a,b) -> Or(f i a, f i b)
+      | U(a,b) -> U(f i a, f i b)
+      | R(a,b) -> R(f i a, f i b)
+      | F(a) -> F(f i a)
+      | G(a) -> G(f i a)
+      | Not(a) -> Not(f i a)
+    in
+    f 0 x
 
 end
 

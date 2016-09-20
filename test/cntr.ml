@@ -10,6 +10,7 @@ let y = reg_fb r_none empty 4 @@ fun d ->
     mux2 (d ==:. 7) (zero 4) (d +:. 1)
 
 (* properties *)
+let y_is_2 = y ==:. 2
 let y_is_4 = y ==:. 4
 let y_is_6 = y ==:. 6
 
@@ -19,10 +20,9 @@ open HardCamlAffirm
 let ltl = 
   Props.LTL.( ~: (g ((p y_is_4) ==>: (x (p y_is_6))) ))
 
-let test k =
-  let open Dimacs in
-  let cnf = convert @@ Bmc.compile_ltl ~k ~ltl in
-  let map = Sat.name_map Sat.M.empty cnf in
-  report map @@ run cnf
+let ltl = 
+  Props.LTL.(g (f (p y_is_2)))
+
+let test k = Bmc.run_ltl ~k ~ltl
 
 

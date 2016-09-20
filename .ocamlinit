@@ -5,7 +5,7 @@
 open HardCaml;;
 open HardCamlAffirm;;
 
-module Test = struct
+module Test() = struct
   (* some test definitions *)
 
   open Signal.Comb
@@ -33,7 +33,7 @@ module Test = struct
   let z = ((ue x) +: (ue y)) ==:. 3
 
   let ltl = Props.LTL.(f (p is_30))
-  let compiled = Bmc.compile_ltl ~k:2 ~ltl 
+  let compiled = Bmc.compile ~k:2 ltl 
 
 end
 
@@ -46,8 +46,28 @@ module Test2 = struct
     let x = reg_fb r_none empty 2 (fun d -> d +:. 1) in
     let is_3 = output "is_3" (x ==:. 1) in
     let ltl = Props.LTL.(f (p is_3)) in
-    let compiled = Bmc.compile_ltl ~k ~ltl in
+    let compiled = Bmc.compile ~k ltl in
     Dimacs.(run @@ convert compiled)
+
+end
+
+module Test3 = struct
+
+  open Signal.Comb
+  open Signal.Seq
+
+  module X = Bmc.Unroller(Signal.Comb)
+
+  let test k = 
+    let a = input "a" 1 in
+    let r = reg r_none empty a -- "reg" in
+    let b = output "b" r in
+    let trans,loop,props = X.unroller ~k [b] in
+    
+        Rtl.Verilog.write print_string @@ Circuit.make "trans" [ output "trans" trans ];
+    Rtl.Verilog.write print_string @@ Circuit.make "props" @@ 
+      List.map snd @@ List.concat @@ Array.to_list @@ props;
+    Rtl.Verilog.write print_string @@ Circuit.make "loop" loop
 
 end
 

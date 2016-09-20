@@ -50,6 +50,8 @@ module LTL : sig
     | X of path
     | U of path * path
     | R of path * path
+    | F of path 
+    | G of path
 
   val vdd : path
   val gnd : path
@@ -68,7 +70,9 @@ module LTL : sig
 
   val to_string : ?name:(atomic_proposition -> string) -> path -> string
   val atomic_propositions : path -> atomic_proposition list
+  val depth : path -> int
   val nnf : path -> path
+  val limit_depth : int -> path -> path
 
 end
 

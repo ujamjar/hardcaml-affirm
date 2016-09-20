@@ -76,7 +76,7 @@ struct
 
     (** equality *)
     let (==:) a b = 
-        let eq = (~: (a &: (~: b))) &: (~: ((~: a) &: b)) in
+        let eq = (~: (a &: (~: b))) &: (~: ((~: a) &: b)) in (* ~: (a ^: b) *)
         reduce_bits vdd (&:) eq
     
     (** less than *)
