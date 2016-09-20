@@ -11,9 +11,9 @@ let y = reg_fb r_none empty 4 @@ fun d ->
 let y = y -- "counter"
 
 (* properties *)
-let y_is_2 = y ==:. 2
-let y_is_4 = y ==:. 4
-let y_is_6 = y ==:. 6
+let y_is_2 = output "y_is_2" (y ==:. 2)
+let y_is_4 = output "y_is_4" (y ==:. 4)
+let y_is_6 = output "y_is_6" (y ==:. 6)
 
 open HardCamlAffirm
 

@@ -421,7 +421,7 @@ module LTL = struct
     let _true = const "1" -- "prop_t" in
     let _false = const "1" -- "prop_f" in
 
-    let rec f i ltl = 
+    let rec g i ltl = 
       if i>(k+depth) then failwith "compiling LTL formulate: i>(k+?depth)"
       else
         (* recursively generate propositions over time steps *)
@@ -438,7 +438,7 @@ module LTL = struct
             if j>k then gnd
             else (a' &: (f j b)) |: (u (j+1) (a' &: (f j a)))
           in
-          (u i vdd) -- "prop_u"
+          u i vdd
         | Props.LTL.R(a,b) -> (* b holds until a&b, or b always *)
           let rec r j b' = (* from i..j - returns the accumulated b variable *)
             if j>k then gnd, b'
@@ -449,24 +449,58 @@ module LTL = struct
               (a &: b) |: r', b'
           in
           let r, b' = r i vdd in
-          (r |: (b' &: loop_k)) -- "prop_r"
+          r |: (b' &: loop_k)
         | Props.LTL.F p -> (* p is finally (eventually) true *)
           let rec x j = 
             if j>k then gnd
             else f j p |: x (j+1)
           in
-          x i -- "prop_f"
+          x i 
         | Props.LTL.G p -> (* p is globally (always) true *)
           let rec x j = 
             if j>k then vdd
             else f j p &: x (j+1)
           in
-          (x i &: loop_k) -- "prop_g"
+          x i &: loop_k
         | Props.LTL.Not _ -> failwith "not in negated normal form"
-    in
+
+    and f i ltl = output (Props.LTL.to_string ltl) (g i ltl) in
+
     f 0 ltl
 
 end
+
+let format_results = function
+  | `unsat -> `unsat
+  | `sat(k,s) -> 
+    let is_prefixed s = 
+      let is_num n = n >= '0' && n <= '9' in
+      try
+        s.[0] = '_' &&
+        s.[1] = '_' &&
+        is_num s.[2] && 
+        is_num s.[3] && 
+        is_num s.[4] && 
+        is_num s.[5] && 
+        s.[6] = '_' 
+      with _ -> false
+    in
+    let get_cycle s = int_of_string (String.sub s 2 4) in
+    let get_name s = String.sub s 7 (String.length s - 7) in
+    let prefixed, other = List.partition (fun (x,_) -> is_prefixed x) s in
+    let prefixed = List.map (fun (s,v) -> get_name s, get_cycle s, v) prefixed in
+    let prefixed = List.sort compare prefixed in
+    let prefixed = Dimacs.partition (fun (n,_,_) (m,_,_) -> m=n) prefixed in
+    let prefixed = List.map 
+        (function
+          | [] -> "?", [||]
+          | ((n,_,_)::_) as p ->
+            let max_c = List.fold_left (fun m (_,c,_) -> max m c) 0 p in
+            let p = List.map (fun (_,c,v) -> c,v) p in
+            n, Array.init (max_c+1) (fun i -> try List.assoc i p with _ -> "?"))
+        prefixed
+    in
+    `sat(k, prefixed @ List.map (fun (s,v) -> s, [|v|]) other)
 
 let rec get_loop ?(loop=`all) ~loop_k ~k () = 
   let open HardCaml.Signal.Comb in
@@ -522,9 +556,8 @@ let run ?verbose ?mode ~k ltl =
     else 
       match run1 ?verbose ?mode ~loop:`all ~k:i ltl with
       | `unsat -> f (i+1)
-      | `sat l -> `sat(i, l)
+      | `sat l -> format_results @@ `sat(i, l)
   in
   f 0
    
-(*******************************************************************)
 

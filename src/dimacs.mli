@@ -6,6 +6,8 @@ val write : out_channel -> Sat.relabelled Sat.sat -> unit
 
 type 'a result = [ `unsat | `sat of 'a ]
 
+val partition : ('a -> 'a -> bool) -> 'a list -> 'a list list
+
 (** run SAT solver, parse and return results *)
 val run : ?solver:[`pico|`mini|`crypto] -> Sat.relabelled Sat.sat -> int list result 
 

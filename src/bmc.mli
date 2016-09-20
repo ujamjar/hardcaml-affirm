@@ -58,5 +58,5 @@ val run1 : ?verbose:bool -> ?mode:mode -> ?loop:loop ->
 (** Iteratively run BMC for up to k time steps *)
 val run : ?verbose:bool -> ?mode:mode -> 
           k:int -> Props.LTL.path -> 
-          (int * ((string * string) list)) Dimacs.result
+          (int * ((string * string array) list)) Dimacs.result
 

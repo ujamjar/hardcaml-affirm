@@ -102,16 +102,16 @@ let run ?(solver=`pico) cnf =
   (try Unix.unlink fout with _ -> ());
   result
 
-let partition l =
+let partition eq l =
   let rec f n p l = 
     match l with
     | [] -> [p]
-    | ((n',_,_) as p') :: tl when n=n' -> f n (p' :: p) tl
-    | (n',_,_) :: tl                   -> p :: f n' [] l
+    | h :: tl when eq h n -> f n (h :: p) tl
+    | h :: tl             -> p :: f h [] l
   in
   match l with
   | [] -> []
-  | (n,_,_) :: _ -> f n [] l
+  | h :: _ -> f h [] l
 
 let to_vec l = 
   let len = 1 + List.fold_left (fun m (_,n,_) -> max m n) 0 l in
@@ -139,6 +139,6 @@ let report map = function
         List.map (fun (n,b) -> (n, b, if x<0 then 0 else 1)) l) 
       x 
     in
-    let x = List.map to_vec @@ partition x in
+    let x = List.map to_vec @@ partition (fun (n,_,_) (m,_,_) -> n=m) x in
     `sat x
 
