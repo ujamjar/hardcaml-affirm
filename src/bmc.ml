@@ -59,108 +59,6 @@
   
 *)
 
-let verbose = false 
-
-(* this is copied from the HardCaml.Transform module and modified very slightly
- * to add a suffix to all wire names (specifically for the inputs and outputs)
- * so the stages can be differentiated in the combined (unrolled) circuit. *)
-module CustomTransform = struct
-
-  open HardCaml.Utils
-  open HardCaml.Signal.Types
-  open HardCaml.Signal.Comb
-
-  let rewrite suffix fn id_to_sig outputs = 
-    let idv k v = k in
-    let set_of_map f map = UidMap.fold (fun k v s -> UidSet.add (f k v) s) map UidSet.empty in 
-    let set_of_list f l = List.fold_left (fun s v -> UidSet.add (f v) s) UidSet.empty [] in
-
-    let copy_names s t = 
-      List.fold_left (fun t n -> t -- (n ^ suffix)) t (names s)
-    in
-
-    let partition compare set = 
-      UidSet.fold (fun k (tr,fl) -> 
-        if compare k then UidSet.add k tr, fl
-        else tr, UidSet.add k fl) set (UidSet.empty,UidSet.empty)
-    in
-
-    let find uid = UidMap.find uid id_to_sig in
-    
-    (*let partition_const = partition (find >> is_const) in*)
-    let partition_wire = partition (find >> is_wire) in
-
-    let partition_ready ready remaining = 
-      let ready s = 
-        let s = find s in (* look up the signal *)
-        let dep_set = set_of_list uid (deps s) in
-        UidSet.subset dep_set ready
-      in
-      let new_ready, not_ready = partition ready remaining in
-      if UidSet.cardinal new_ready = 0 then failwith "Could not schedule anything"
-      else new_ready, not_ready
-    in
-
-    let all_set = set_of_map idv id_to_sig in
-    let wire_set,remaining_set = partition_wire all_set in
-    let ready_set = wire_set in
-
-    (* copy wires (must be done this way to break combinatorial dependancies *)
-    let map = 
-      UidSet.fold (fun uid map ->
-        let signal = find uid in
-        match signal with
-        | Signal_wire(_) -> UidMap.add uid (copy_names signal (wire (width signal))) map
-        | _ -> failwith "unexpected signal"
-      ) ready_set UidMap.empty
-    in
-
-    (* now recursively rewrite nodes as they become ready *)
-    let rec rewrite map ready remaining = 
-      if UidSet.cardinal remaining = 0 then map
-      else
-        let find_new map uid = UidMap.find uid map in
-        let new_ready, new_remaining = partition_ready ready remaining in
-        (* rewrite the ready nodes *)
-        let map = 
-          UidSet.fold (fun uid map ->
-            let old_signal = find uid in
-            let new_signal = fn (find_new map) old_signal in
-            UidMap.add uid new_signal map
-          ) new_ready map
-        in
-        rewrite map (UidSet.union ready new_ready) new_remaining
-    in
-
-    let map = rewrite map ready_set remaining_set in
-
-    (* reattach all wires *)
-    UidSet.iter (fun uid' ->
-        let o = UidMap.find uid' id_to_sig in
-        let n = UidMap.find uid' map in
-        match o with 
-        | Signal_wire(id,d) -> 
-            if !d <> empty then
-                let d = UidMap.find (uid !d) map in
-                n <== d
-        | _ -> failwith "expecting a wire") wire_set;
-
-    (* find new outputs *)
-    let outputs = 
-      List.map (fun signal -> UidMap.find (uid signal) map) 
-        outputs
-    in
-    outputs
-
-  let rewrite_signals suffix fn signals = 
-    let id_to_sig = HardCaml.Circuit.search
-      (fun map signal -> UidMap.add (uid signal) signal map)
-      HardCaml.Circuit.id UidMap.empty signals
-    in
-    rewrite suffix fn id_to_sig signals
-
-end
-
 module Copy = HardCaml.Transform.CopyTransform
 
 (* convert a register with reset/clear/enable, to a simple flipflop by
@@ -219,59 +117,6 @@ struct
         let spec, d = simple_reg find r (dep 0) q in
         q <== reg spec empty d;
         List.fold_left (--) q (names signal)
-    | _ -> Copy.transform find signal
-
-end
-
-module Unroll = struct
-  open HardCaml.Signal.Types
-  open HardCaml.Signal.Comb
-  open HardCaml.Signal.Seq
-  open HardCaml.Utils
-
-  let (==>:) a b = (~: a) |: b
-
-  let prefix = "__reg"
-
-  type step = 
-    {
-      step : int; (* note; at step=0 we initialise *)
-      prev : (uid * t) list; (* registers from previous stage *)
-      mutable cur : (uid * t) list; (* registers for next stage *)
-      mutable clause : t list;
-    }
-
-  let transform st find signal = 
-    let dep n = find (uid (List.nth (deps signal) n)) in
-    match signal with
-    | Signal_reg(id,r) -> begin
-      let name s = (* try to give a 'very' unique-ish name *)
-        prefix ^ 
-          (try List.hd (names s) ^ "_" ^ Int64.to_string (uid s) 
-          with _ -> "_" ^ Int64.to_string (uid s)) ^ 
-            "_bmcstep_" ^ string_of_int st.step 
-      in
-
-      (* next state *)
-      let q_cur = input (name signal) (width signal) in
-      st.cur <- (uid signal, q_cur) :: st.cur;
-
-      (* initialise *)
-      if st.step = 0 then begin
-          st.clause <- (r.reg_reset_value ==: q_cur) :: st.clause;
-          List.fold_left (--) q_cur (names signal) 
-      (* step *)
-      end else begin
-        let q_prev = 
-          try List.assoc (uid signal) st.prev
-          with Not_found -> failwith "couldn't find register from previous step"
-        in
-        (* generate implication clause *)
-        let d = dep 0 in
-        st.clause <- (d ==: q_cur) :: st.clause;
-        List.fold_left (--) q_prev (names signal)
-      end
-    end
     | _ -> Copy.transform find signal
 
 end
@@ -376,7 +221,7 @@ module Unroller(B : HardCaml.Comb.S) = struct
       
   let create_signal map signal = 
     let s = List.map (fun s -> UidMap.find (uid s) map) (deps signal) in
-    let a = function [a] -> a | [a;_] -> a | _ -> failwith "arg a" in
+    let a = function a::_ -> a | _ -> failwith "arg a" in
     let b = function [_;b] -> b | _ -> failwith "arg b" in
     match signal with
     | Signal_empty -> B.empty
@@ -413,9 +258,12 @@ module Unroller(B : HardCaml.Comb.S) = struct
       else B.zero (width s)
     | _ -> failwith "expecting register"
 
-  let unroller ~k props = 
+  let unroller ?(verbose=false) ~k props = 
 
     let open Printf in
+
+    (* simplify register enable/clear etc *)
+    (*let props = Transform.rewrite_signals SimplifyRegs.transform props in*)
 
     let regs, inputs, consts = find_regs_and_ready props in
     let ready = regs @ inputs @ consts in
@@ -539,6 +387,9 @@ end
 
 module Unroller_signal = Unroller(HardCaml.Signal.Comb)
 
+type loop = [`none|`all|`offset of int]
+type mode = [`limit_formula|`min_k]
+
 module LTL = struct
 
   (* LTL properties.
@@ -559,19 +410,19 @@ module LTL = struct
   
   type prop_steps = prop_set array (* length=k+1 *)
 
-  let compile ~props ~loop_k ~ltl = 
+  let compile ~mode ~props ~loop_k ~ltl = 
     let open HardCaml.Signal in
     let open Comb in
 
     let ltl = Props.LTL.nnf ltl in
-    let depth = Props.LTL.depth ltl in
+    let depth = if mode=`min_k then Props.LTL.depth ltl else 0 in
     let k = Array.length props - 1 - depth in
 
     let _true = const "1" -- "prop_t" in
     let _false = const "1" -- "prop_f" in
 
     let rec f i ltl = 
-      if i>(k+depth) then failwith "compiling LTL formulate: i>(k+depth)"
+      if i>(k+depth) then failwith "compiling LTL formulate: i>(k+?depth)"
       else
         (* recursively generate propositions over time steps *)
         match ltl with
@@ -617,53 +468,6 @@ module LTL = struct
 
 end
 
-(* unroll for k cycles *)
-let unroll ~k circ = 
-  let open HardCaml in
-  let open Signal.Comb in
-
-  (* 1. simplify regs *)
-  let outputs' = Transform.rewrite_signals SimplifyRegs.transform circ in
-
-  (* 2. unroll circuit 'k+1' times where k=0 is for initialisation *)
-  let open HardCaml in
-  let rec f step prev clause outputs states = 
-    if step > k then 
-      clause, outputs, states
-    else begin
-      let st = Unroll.({ step; prev; cur=[]; clause=[] }) in
-      let outputs' = 
-        CustomTransform.rewrite_signals ("_bmcstep_" ^ string_of_int step)
-          Unroll.(transform st) outputs' 
-      in
-      let outputs' = List.map2 (fun o o' -> Signal.Types.uid o, o') circ outputs' in
-      f (step+1) st.Unroll.cur (st.Unroll.clause :: clause) 
-        (outputs' :: outputs) (st.Unroll.cur :: states)
-    end
-  in
-  let c,o,s = f 0 [] [] [] [] in
-  let c = 
-    let reduce_and l = if l=[] then vdd else reduce (&:) l in
-    reduce_and (List.map reduce_and c)
-  in
-  (* loop clause: Exists_{i=0..k-1} state.(i) = state.(k) *)
-  let loop_k = 
-    let k = List.hd s in
-    let s = List.rev @@ List.tl s in
-    List.map
-      (fun s ->
-        List.fold_left2 
-          (fun acc (u0,s0) (u1,s1) ->
-            assert (u0=u1);
-            acc &: (s0 ==: s1)) 
-          vdd k s) 
-      s
-  in
-  let props = Array.of_list @@ List.rev @@ o in
-  c, loop_k, props
-
-type loop = [`none|`all|`offset of int]
-
 let rec get_loop ?(loop=`all) ~loop_k ~k () = 
   let open HardCaml.Signal.Comb in
   let rec f k l = 
@@ -679,37 +483,44 @@ let rec get_loop ?(loop=`all) ~loop_k ~k () =
   | `offset(x) when x < 0      -> List.nth loop_k (k+x)
   | `offset(x) (*when x >= 0*) -> List.nth loop_k (x)
 
-let compile ?(loop=`all) ~k ltl = 
+let compile ?(verbose=false) ?(mode=`min_k) ?(loop=`all) ~k ltl' = 
+  let depth, ltl = 
+    match mode with
+    | `min_k -> Props.LTL.depth ltl', ltl'
+    | `limit_formula -> 0, Props.LTL.limit_depth k ltl'
+  in
   let atomic_props = Props.LTL.atomic_propositions ltl in
-  let depth = Props.LTL.depth ltl in
   let clauses, loop_k, props = Unroller_signal.unroller ~k:(k+depth) atomic_props in
   let () = 
     if verbose then begin
       Printf.printf "k = %i\n" k;
       Printf.printf "  %s\n" Props.LTL.(to_string ltl);
+      Printf.printf "  %s\n" Props.LTL.(to_string @@ Props.LTL.limit_depth k ltl');
       Printf.printf "  %s\n" Props.LTL.(to_string @@ nnf ltl);
-      Printf.printf "  ltl depth = %i\n" depth;
+      Printf.printf "  %s\n" Props.LTL.(to_string @@ nnf @@ Props.LTL.limit_depth k ltl');
+      Printf.printf "  ltl depth = %i (%s)\n" depth 
+        (match mode with `min_k -> "min_k" | `limit_formula -> "limit_formula");
       Printf.printf "  props = %i\n" (Array.length props);
       Printf.printf "  loop_k = %i\n" (List.length loop_k)
     end
   in
   let loop_k = get_loop ~loop ~loop_k ~k () in
   let () = if verbose then Printf.printf "got loop\n%!" in
-  let props = LTL.compile ~props ~loop_k ~ltl in
+  let props = LTL.compile ~mode ~props ~loop_k ~ltl in
   let () = if verbose then Printf.printf "compiled property\n%!" in
   HardCaml.Signal.Comb.(clauses &: props)
 
-let run1 ?(loop=`all) ~k ltl = 
-  let cnf = Dimacs.convert @@ compile ~loop ~k ltl in
+let run1 ?verbose ?mode ?(loop=`all) ~k ltl = 
+  let cnf = Dimacs.convert @@ compile ?verbose ?mode ~loop ~k ltl in
   let map = Sat.name_map Sat.M.empty cnf in
   Dimacs.report map @@ Dimacs.run cnf
 
-let run ~k ltl = 
+let run ?verbose ?mode ~k ltl = 
   (* run tests from 0..k *)
   let rec f i =
     if i>k then `unsat
     else 
-      match run1 ~loop:`all ~k:i ltl with
+      match run1 ?verbose ?mode ~loop:`all ~k:i ltl with
       | `unsat -> f (i+1)
       | `sat l -> `sat(i, l)
   in

@@ -7,24 +7,19 @@ val simple_reg : (uid -> t) -> register -> t -> t -> register * t
 
 module SimplifyRegs : Transform.TransformFn
 
-module Unroll : sig
-  type step 
-  val transform : step -> (uid -> t) -> t -> t
-end
-
+(** Unroll circuit *)
 module Unroller(B : HardCaml.Comb.S) : sig
 
-  val schedule : t list -> t list -> t list -> t list
-
-  val copy_names : int -> B.t -> t -> B.t
-
-  val create_signal : B.t UidMap.t -> t -> B.t
-
-  val init_value : t -> B.t
-
-  val unroller : k:int -> t list -> B.t * B.t list * ((uid * B.t) list array)
+  (* Unroll circuit over k time steps.  Returns the transition function,
+     loop clause(s) and properties over time *)
+  val unroller : ?verbose:bool -> 
+                 k:int -> t list -> 
+                 B.t * B.t list * ((uid * B.t) list array)
 
 end
+
+type loop = [ `none | `all | `offset of int]
+type mode = [ `limit_formula | `min_k]
 
 module LTL : sig
 
@@ -36,17 +31,13 @@ module LTL : sig
 
   (** compile LTL property *)
   val compile :
+    mode:mode ->
     props:prop_steps ->
     loop_k:t ->
     ltl:Props.LTL.path ->
     t
 
 end
-
-(** unroll circuit over k time steps *)
-val unroll : k:int -> t list -> t * t list * ((uid * t) list array)
-
-type loop = [`none|`all|`offset of int]
 
 (** get loop clause (of k steps) *)
 val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
@@ -55,11 +46,17 @@ val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
  
     For a LTL formula with depth d, the circuit is unrolled (k+d) times.
     The (default) loop check will be for k steps. *)
-val compile : ?loop:loop -> k:int -> Props.LTL.path -> t
+val compile : ?verbose:bool -> ?mode:mode -> ?loop:loop -> 
+              k:int -> Props.LTL.path -> 
+              t
 
 (** run BMC with bound k *)
-val run1 : ?loop:loop -> k:int -> Props.LTL.path -> ((string * string) list) Dimacs.result
+val run1 : ?verbose:bool -> ?mode:mode -> ?loop:loop -> 
+           k:int -> Props.LTL.path -> 
+           ((string * string) list) Dimacs.result
 
 (** Iteratively run BMC for up to k time steps *)
-val run : k:int -> Props.LTL.path -> (int * ((string * string) list)) Dimacs.result
+val run : ?verbose:bool -> ?mode:mode -> 
+          k:int -> Props.LTL.path -> 
+          (int * ((string * string) list)) Dimacs.result
 
