@@ -3,3 +3,5 @@ SRC test
 B _build/src
 PKG hardcaml
 PKG hardcaml-bloop
+PKG hardcaml-waveterm
+PKG lwt

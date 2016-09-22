@@ -50,7 +50,7 @@ let () = sat (i &: reduce (&:) [t 0; t 1; t 2] &: z2)
 open HardCaml.Signal.Comb
 open HardCaml.Signal.Seq
 
-let test ?verbose ?mode k = 
+let test ?verbose k = 
 
   let r1 = input "r1" 1 in
   let r2 = input "r2" 1 in
@@ -68,7 +68,7 @@ let test ?verbose ?mode k =
   let ltl3 = r1 ==>: x g1 in
   let ltl4 = g (~: g1) in
 
-  let result = Bmc.run ?verbose ?mode ~k (~: ltl) in
+  let result = Bmc.run ?verbose ~k (~: ltl) in
   (*let () = 
     Printf.printf "generating verilog...\n";
     Rtl.Verilog.write print_string @@

@@ -14,12 +14,11 @@ module Unroller(B : HardCaml.Comb.S) : sig
      loop clause(s) and properties over time *)
   val unroller : ?verbose:bool -> 
                  k:int -> t list -> 
-                 B.t * B.t list * ((uid * B.t) list array)
+                 B.t list * B.t list * ((uid * B.t) list array)
 
 end
 
 type loop = [ `none | `all | `offset of int]
-type mode = [ `limit_formula | `min_k]
 
 module LTL : sig
 
@@ -30,11 +29,15 @@ module LTL : sig
   type prop_steps = prop_set array (* length=k+1 *)
 
   (** compile LTL property *)
-  val compile :
-    mode:mode ->
+  val compile_no_loop :
     props:prop_steps ->
-    loop_k:t ->
     ltl:Props.LTL.path ->
+    t
+
+  val compile_loop :
+    props:prop_steps ->
+    ltl:Props.LTL.path ->
+    l:int ->
     t
 
 end
@@ -46,17 +49,17 @@ val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
  
     For a LTL formula with depth d, the circuit is unrolled (k+d) times.
     The (default) loop check will be for k steps. *)
-val compile : ?verbose:bool -> ?mode:mode -> ?loop:loop -> 
+val compile : ?verbose:bool -> ?loop:loop -> 
               k:int -> Props.LTL.path -> 
               t
 
 (** run BMC with bound k *)
-val run1 : ?verbose:bool -> ?mode:mode -> ?loop:loop -> 
+val run1 : ?verbose:bool -> ?loop:loop -> 
            k:int -> Props.LTL.path -> 
            ((string * string) list) Dimacs.result
 
 (** Iteratively run BMC for up to k time steps *)
-val run : ?verbose:bool -> ?mode:mode -> 
+val run : ?verbose:bool -> 
           k:int -> Props.LTL.path -> 
           (int * ((string * string array) list)) Dimacs.result
 

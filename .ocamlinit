@@ -1,4 +1,4 @@
-#require "hardcaml";;
+#require "hardcaml,hardcaml-waveterm.lterm";;
 #directory "_build/src";;
 #load "HardCamlAffirm.cma";;
 
@@ -64,7 +64,8 @@ module Test3 = struct
     let b = output "b" r in
     let trans,loop,props = X.unroller ~k [b] in
     
-        Rtl.Verilog.write print_string @@ Circuit.make "trans" [ output "trans" trans ];
+    Rtl.Verilog.write print_string @@ Circuit.make "trans" 
+      [ output "trans" (reduce (&:) trans) ];
     Rtl.Verilog.write print_string @@ Circuit.make "props" @@ 
       List.map snd @@ List.concat @@ Array.to_list @@ props;
     Rtl.Verilog.write print_string @@ Circuit.make "loop" loop

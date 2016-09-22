@@ -1,62 +1,22 @@
-(* Bounded Model Checking.
- 
-  Invariant checking with BMC
-  ---------------------------
+(* Bounded Model Checking for HardCaml circuits with LTL property checking.
   
-  AG P (property P is always true).
+   The main API function is 'run ~k ltl' which will iteratively run
+   bounded model checking for 0, then 1, up to 'k' time steps against the 
+   property specification given by 'ltl'.
 
-  I0 & &[ S(i,i+1) ] & |[ ~Pi ]
-       i=0..k-1        i=0..k
+   Note; the circuit which is extracted is derived only from the atomic
+   propositions in the LTL formula.
 
-  where
-    I0 = initial state
-    S(i,i+1) = transistion relation from state i to i+1
-    Pi = property in cycle i
+   Implementation notes:
 
-  note; &[..] |[..] represent conjunction/disjunction over the given bounds
-
-  In context of hardware
-
-    I0 = initial value of the registers
-    S(i,i+1) = function of inputs + registers to next value of registers 
-    Pi = a property built from the combinatorial logic at the current time step
-
-  A couple of properties
-    - This formula can be satisfied if and only if there exists a reachable state in 
-      cycle i (i<=k) which contradicts the property Pi.
-    - You can focus on a specific cycle by restricting the disjunction over Pi (|[ ~Pi ])
- 
-  Description above adapted from 
-  http://www.cs.ubc.ca/~hoos/SATLIB/Benchmarks/SAT/BMC/description.html
-
-  Loops
-  -----
-
-  There is an interesting modification to the above which allows us to look
-  at. and prove. properties over infinite paths.  The idea is we end up with
-  a sequence of states {S0 S1 ... Sl ... Sk} where Sl to Sk repeats.
-  We can check this with some extra logic which compares states for equality ie
-  if Sk <==> Sl we will repeat the loop infinitely.
-
-  The more complex bit is actually choosing a temporal logic and deriving the
-  appropriate properties in a bounded form and this also seems to affect the 
-  loop check complexity.
-
-  note; how similar is this to runtime verification/monitoring using temportal 
-        logics?  It appears to be much the same problem at first glance.
-
-  Implementation
-  --------------
-
-  Given a circuit we have basically only one thing to do;
-
-  - Remove all registers and replace them with inputs and outputs
-  - Trace the register I/O pairs so we can connect them up across states
-  - a related detail - registers must be transformed to a simple form
-    without clear/enable (reset is handled by I0 I think) etc
-      if (reset) d <= r;
-      else d <= q;
-  
+   * 'unroll's circuit for k time steps.
+   * connects register(state) inputs/outputs between adjacent time steps.
+   * generates transition propositions ('and' of 'xnor' of state between steps)
+   * generates atomic propositions for each step
+   * compiles a bounded path for the LTL formula
+     * deals with cases both with and without loops seperately (as per Biere paper)
+   * generates a sat problem and runs a solver
+   * iterates to next time step
 *)
 
 module Copy = HardCaml.Transform.CopyTransform
@@ -258,6 +218,8 @@ module Unroller(B : HardCaml.Comb.S) = struct
       else B.zero (width s)
     | _ -> failwith "expecting register"
 
+  let reduce_and l = match l with [] -> B.vdd | _ -> B.reduce B.(&:) l 
+
   let unroller ?(verbose=false) ~k props = 
 
     let open Printf in
@@ -314,8 +276,6 @@ module Unroller(B : HardCaml.Comb.S) = struct
 
     let () = if verbose then printf "schedule\n" in
 
-    let reduce_and l = match l with [] -> B.vdd | _ -> B.reduce B.(&:) l in
-
     (* initialisation *)
     let trans_0 =
       reduce_and @@
@@ -360,14 +320,13 @@ module Unroller(B : HardCaml.Comb.S) = struct
     in
 
     let x = let x = (trans_0, props_i 0) in x :: f 1 in
-    let trans = reduce_and (List.map fst x) in
+    let trans = List.map fst x in
     let props = List.map snd x in
 
     let loop = 
       let s = List.rev @@ Array.to_list @@ Array.init (k+1) regs' in
       let k = List.hd s in
       let s = List.rev @@ List.tl s in
-      List.mapi (fun i s -> B.output ("loop_" ^ string_of_int i) s) @@
       List.map
         (fun s ->
           reduce_and @@
@@ -388,7 +347,6 @@ end
 module Unroller_signal = Unroller(HardCaml.Signal.Comb)
 
 type loop = [`none|`all|`offset of int]
-type mode = [`limit_formula|`min_k]
 
 module LTL = struct
 
@@ -410,61 +368,75 @@ module LTL = struct
   
   type prop_steps = prop_set array (* length=k+1 *)
 
-  let compile ~mode ~props ~loop_k ~ltl = 
+  let compile_no_loop ~props ~ltl = 
     let open HardCaml.Signal in
     let open Comb in
 
     let ltl = Props.LTL.nnf ltl in
-    let depth = if mode=`min_k then Props.LTL.depth ltl else 0 in
-    let k = Array.length props - 1 - depth in
-
-    let _true = const "1" -- "prop_t" in
-    let _false = const "1" -- "prop_f" in
+    let k = Array.length props - 1 in
 
     let rec g i ltl = 
-      if i>(k+depth) then failwith "compiling LTL formulate: i>(k+?depth)"
+      if i>k then gnd
       else
         (* recursively generate propositions over time steps *)
         match ltl with
-        | Props.LTL.True -> _true
-        | Props.LTL.Not Props.LTL.True -> _false
+        | Props.LTL.True -> vdd
+        | Props.LTL.Not Props.LTL.True -> gnd
         | Props.LTL.P p -> List.assoc (Types.uid p) props.(i)
         | Props.LTL.Pn p -> ~: (List.assoc (Types.uid p) props.(i))
-        | Props.LTL.And(a,b) -> ((f i a) &: (f i b)) -- "prop_and"
-        | Props.LTL.Or(a,b) -> ((f i a) |: (f i b)) -- "prop_or"
-        | Props.LTL.X p -> f (i+1) p -- "prop_x"
-        | Props.LTL.U(a,b) -> (* a holds until b; b, ab, aab, aaab etc. *)
-          let rec u j a' = (* from i..j *)
-            if j>k then gnd
-            else (a' &: (f j b)) |: (u (j+1) (a' &: (f j a)))
-          in
-          u i vdd
-        | Props.LTL.R(a,b) -> (* b holds until a&b, or b always *)
-          let rec r j b' = (* from i..j - returns the accumulated b variable *)
-            if j>k then gnd, b'
-            else 
-              let a = f j a in
-              let b = f j b &: b' in
-              let r', b' = r (j+1) b in
-              (a &: b) |: r', b'
-          in
-          let r, b' = r i vdd in
-          r |: (b' &: loop_k)
-        | Props.LTL.F p -> (* p is finally (eventually) true *)
+        | Props.LTL.And(a,b) -> ((f i a) &: (f i b)) 
+        | Props.LTL.Or(a,b) -> ((f i a) |: (f i b)) 
+        | Props.LTL.X p -> f (i+1) p 
+
+        (* XXX TODO *)
+        | Props.LTL.U(a,b) -> failwith "U"
+        | Props.LTL.R(a,b) -> failwith "R"
+
+        | Props.LTL.F p -> 
           let rec x j = 
             if j>k then gnd
             else f j p |: x (j+1)
           in
           x i 
-        | Props.LTL.G p -> (* p is globally (always) true *)
-          let rec x j = 
-            if j>k then vdd
-            else f j p &: x (j+1)
-          in
-          x i &: loop_k
+        | Props.LTL.G p -> gnd 
         | Props.LTL.Not _ -> failwith "not in negated normal form"
 
-    and f i ltl = output (Props.LTL.to_string ltl) (g i ltl) in
+    and f i ltl = output ("noloop:"^Props.LTL.to_string ltl) (g i ltl) in
+
+    f 0 ltl
+
+  let compile_loop ~props ~ltl ~l = 
+    let open HardCaml.Signal in
+    let open Comb in
+
+    let ltl = Props.LTL.nnf ltl in
+    let k = Array.length props - 1 in
+
+    let rec loop f l h = if l > h then [] else f l :: loop f (l+1) h in
+    let succ i = if i < k then i+1 else l in (* ??? *)
+
+    let rec g i ltl = 
+      if i>k then gnd
+      else
+        (* recursively generate propositions over time steps *)
+        match ltl with
+        | Props.LTL.True -> vdd
+        | Props.LTL.Not Props.LTL.True -> gnd
+        | Props.LTL.P p -> List.assoc (Types.uid p) props.(i)
+        | Props.LTL.Pn p -> ~: (List.assoc (Types.uid p) props.(i))
+        | Props.LTL.And(a,b) -> ((f i a) &: (f i b)) 
+        | Props.LTL.Or(a,b) -> ((f i a) |: (f i b)) 
+        | Props.LTL.X p -> f (succ i) p 
+
+        (* XXX TODO *)
+        | Props.LTL.U(a,b) -> failwith "U"
+        | Props.LTL.R(a,b) -> failwith "R"
+
+        (* what if the loops are empty? *)
+        | Props.LTL.F p -> reduce (|:) (loop (fun i -> f i p) (min l i) k)
+        | Props.LTL.G p -> reduce (&:) (loop (fun i -> f i p) (min l i) k)
+        | Props.LTL.Not _ -> failwith "not in negated normal form"
+    and f i ltl = output ("loop:"^Props.LTL.to_string ltl) (g i ltl) in
 
     f 0 ltl
 
@@ -517,44 +489,47 @@ let rec get_loop ?(loop=`all) ~loop_k ~k () =
   | `offset(x) when x < 0      -> List.nth loop_k (k+x)
   | `offset(x) (*when x >= 0*) -> List.nth loop_k (x)
 
-let compile ?(verbose=false) ?(mode=`min_k) ?(loop=`all) ~k ltl' = 
-  let depth, ltl = 
-    match mode with
-    | `min_k -> Props.LTL.depth ltl', ltl'
-    | `limit_formula -> 0, Props.LTL.limit_depth k ltl'
-  in
+let compile ?(verbose=false) ?(loop=`all) ~k ltl = 
+  let open HardCaml.Signal.Comb in
   let atomic_props = Props.LTL.atomic_propositions ltl in
-  let clauses, loop_k, props = Unroller_signal.unroller ~k:(k+depth) atomic_props in
+  let clauses, loop_k, props = Unroller_signal.unroller ~k:(k+1) atomic_props in
+  let props = Array.init (Array.length props - 1) (Array.get props) in (* drop final property *)
   let () = 
     if verbose then begin
       Printf.printf "k = %i\n" k;
-      Printf.printf "  %s\n" Props.LTL.(to_string ltl);
-      Printf.printf "  %s\n" Props.LTL.(to_string @@ Props.LTL.limit_depth k ltl');
-      Printf.printf "  %s\n" Props.LTL.(to_string @@ nnf ltl);
-      Printf.printf "  %s\n" Props.LTL.(to_string @@ nnf @@ Props.LTL.limit_depth k ltl');
-      Printf.printf "  ltl depth = %i (%s)\n" depth 
-        (match mode with `min_k -> "min_k" | `limit_formula -> "limit_formula");
-      Printf.printf "  props = %i\n" (Array.length props);
-      Printf.printf "  loop_k = %i\n" (List.length loop_k)
+      Printf.printf "  ltl     = %s\n" Props.LTL.(to_string ltl);
+      Printf.printf "  nnf     = %s\n" Props.LTL.(to_string @@ nnf ltl);
+      Printf.printf "  clauses = %i\n" (List.length clauses);
+      Printf.printf "  props   = %i\n" (Array.length props);
+      Printf.printf "  loop_k  = %i\n%!" (List.length loop_k)
     end
   in
-  let loop_k = get_loop ~loop ~loop_k ~k () in
-  let () = if verbose then Printf.printf "got loop\n%!" in
-  let props = LTL.compile ~mode ~props ~loop_k ~ltl in
-  let () = if verbose then Printf.printf "compiled property\n%!" in
-  HardCaml.Signal.Comb.(clauses &: props)
+  let loop_k_all = get_loop ~loop ~loop_k ~k () in
+  let loop_k = 
+    let loop_k = output "loop_k" (concat @@ List.rev loop_k) in
+    Array.init (width loop_k) (bit loop_k)
+  in
+  let props_no_loop = loop_k_all &: LTL.compile_no_loop ~props ~ltl in
+  let props_loop = 
+    reduce (|:) @@
+    Array.to_list @@
+    Array.init (k+1) (fun l -> loop_k.(l) &: LTL.compile_loop ~props ~ltl ~l) 
+  in
+  Unroller_signal.reduce_and clauses &: (props_no_loop |: props_loop)
 
-let run1 ?verbose ?mode ?(loop=`all) ~k ltl = 
-  let cnf = Dimacs.convert @@ compile ?verbose ?mode ~loop ~k ltl in
+let run1 ?(verbose=false) ?(loop=`all) ~k ltl = 
+  let cnf = Dimacs.convert @@ compile ~verbose ~loop ~k ltl in
+  let () = if verbose then Printf.printf "  vars    = %i\n%!" (Sat.nvars cnf) in
+  let () = if verbose then Printf.printf "  terms   = %i\n%!" (Sat.nterms cnf) in
   let map = Sat.name_map Sat.M.empty cnf in
   Dimacs.report map @@ Dimacs.run cnf
 
-let run ?verbose ?mode ~k ltl = 
+let run ?verbose ~k ltl = 
   (* run tests from 0..k *)
   let rec f i =
     if i>k then `unsat
     else 
-      match run1 ?verbose ?mode ~loop:`all ~k:i ltl with
+      match run1 ?verbose ~loop:`all ~k:i ltl with
       | `unsat -> f (i+1)
       | `sat l -> format_results @@ `sat(i, l)
   in

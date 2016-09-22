@@ -11,19 +11,19 @@ let y = reg_fb r_none empty 4 @@ fun d ->
 let y = y -- "counter"
 
 (* properties *)
-let y_is_2 = output "y_is_2" (y ==:. 2)
-let y_is_4 = output "y_is_4" (y ==:. 4)
-let y_is_6 = output "y_is_6" (y ==:. 6)
-
 open HardCamlAffirm
+
+let y_is = 
+  let y = Array.init 16 (fun i -> output ("y_is_" ^ string_of_int i) (y ==:. i)) in
+  fun i -> Props.LTL.p (Array.get y i)
 
 (* is y=4 then next state y=6 (obviously false) *)
 let ltl_missing_5 = 
-  Props.LTL.( ~: (g ((p y_is_4) ==>: (x (p y_is_6))) ))
+  Props.LTL.( ~: (g ((y_is 4) ==>: (x (y_is 6))) ))
 
 (* will hit 2 infinitely *)
 let ltl_2_repeats = 
-  Props.LTL.(g (f (p y_is_2)))
+  Props.LTL.(g (f (y_is 2)))
 
 
 
