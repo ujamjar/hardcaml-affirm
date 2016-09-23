@@ -70,6 +70,7 @@ module LTL : sig
 
   val to_string : ?name:(atomic_proposition -> string) -> path -> string
   val atomic_propositions : path -> atomic_proposition list
+  val map_atomic_propositions : (atomic_proposition -> atomic_proposition) -> path -> path
   val depth : path -> int
   val nnf : path -> path
   val limit_depth : int -> path -> path

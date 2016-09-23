@@ -28,35 +28,48 @@ module LTL : sig
   
   type prop_steps = prop_set array (* length=k+1 *)
 
+  module M : Map.S
+
   (** compile LTL property *)
   val compile_no_loop :
+    map:t M.t ->
     props:prop_steps ->
     ltl:Props.LTL.path ->
-    t
+    t M.t * t
 
   val compile_loop :
+    map:t M.t ->
     props:prop_steps ->
     ltl:Props.LTL.path ->
     l:int ->
+    t M.t * t
+
+  (** get loop clause (of k steps) *)
+  val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
+
+  val compile :
+    props:prop_steps ->
+    ltl:Props.LTL.path ->
+    loop_k: t list ->
+    k:int ->
     t
 
 end
-
-(** get loop clause (of k steps) *)
-val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
 
 (** generate a BMC formula for a circuit and LTL formula over k time steps.
  
     For a LTL formula with depth d, the circuit is unrolled (k+d) times.
     The (default) loop check will be for k steps. *)
-val compile : ?verbose:bool -> ?loop:loop -> 
+val compile : ?verbose:bool -> 
               k:int -> Props.LTL.path -> 
               t
 
 (** run BMC with bound k *)
-val run1 : ?verbose:bool -> ?loop:loop -> 
+val run1 : ?verbose:bool -> 
            k:int -> Props.LTL.path -> 
-           ((string * string) list) Dimacs.result
+           (int * ((string * string array) list)) Dimacs.result
+
+val print : k:int -> Props.LTL.path -> unit
 
 (** Iteratively run BMC for up to k time steps *)
 val run : ?verbose:bool -> 

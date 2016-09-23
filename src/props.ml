@@ -142,6 +142,22 @@ module LTL = struct
     | F(p) -> atomic_propositions p
     | G(p) -> atomic_propositions p
 
+  let rec map_atomic_propositions f p = 
+    let rec g = function
+      | True -> True
+      | P ap -> P (f ap)
+      | Pn ap -> Pn (f ap)
+      | And(a,b) -> And(g a, g b)
+      | Or(a,b) -> Or(g a, g b)
+      | Not(a) -> Not(g a)
+      | X(p) -> X(g p) 
+      | U(a,b) -> U(g a, g b) 
+      | R(a,b) -> R(g a, g b) 
+      | F(p) -> F(g p) 
+      | G(p) -> G(g p) 
+    in
+    g p
+
   let rec depth = function
     | True -> 0
     | P ap -> 0

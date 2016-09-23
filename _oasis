@@ -23,3 +23,11 @@ SourceRepository master
   Type:     git
   Location: https://github.com/ujamjar/hardcaml-affirm.git
   Browser:  https://github.com/ujamjar/hardcaml-affirm
+
+Executable counter
+  Path:               examples
+  MainIs:             counter.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml-affirm

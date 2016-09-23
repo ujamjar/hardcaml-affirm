@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 769baa54c8a61b8983e022ad769410d5)
+# DO NOT EDIT (digest: 3abf4ea973330e6f998ab9a24ea8914a)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -24,4 +24,12 @@ true: annot, bin_annot
 "src/waves.cmx": for-pack(HardCamlAffirm)
 <src/*.ml{,i,y}>: pkg_hardcaml
 <src/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+# Executable counter
+<examples/counter.{native,byte}>: pkg_hardcaml
+<examples/counter.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<examples/counter.{native,byte}>: use_HardCamlAffirm
+<examples/*.ml{,i,y}>: pkg_hardcaml
+<examples/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<examples/*.ml{,i,y}>: use_HardCamlAffirm
+<examples/counter.{native,byte}>: custom
 # OASIS_STOP
