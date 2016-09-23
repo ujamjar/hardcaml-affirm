@@ -38,15 +38,15 @@ property specification.
 
 BMC is particularly useful for finding counter examples to a property
 specifiction.  Proving correctness is generally only possible up to 
-the bound 'k' (although there are cases where infinite traces can
+the bound `k` (although there are cases where infinite traces can
 be proven due to state loops - in general this will only happen with
-simple sequential circuits a with small state space).
+simple sequential circuits with a small state space).
 
 Note that the functions in the `Bmc` module evaluate the LTL formula
 as given (ie it is NOT negated as many other tools tend to do).  To
 find a counter-example (or prove!) a LTL property `prop` it should be
-passed negated to these functions.  If `\`sat` is returned then it 
-will provide a counterexample.  If `\`unsat` is returned, then the
+passed negated to these functions.  If `sat` is returned then it 
+will provide a counterexample.  If `unsat` is returned, then the
 formula is either proved, or the bound is not large enough.
 
 ### Example;

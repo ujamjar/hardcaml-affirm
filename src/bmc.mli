@@ -2,11 +2,6 @@ open HardCaml
 open Signal.Types
 open Signal.Comb
 
-(** simplify hardcaml registers to delay elements (remove reset, clear and enable) *)
-val simple_reg : (uid -> t) -> register -> t -> t -> register * t
-
-module SimplifyRegs : Transform.TransformFn
-
 (** Unroll circuit *)
 module Unroller(B : HardCaml.Comb.S) : sig
 
@@ -50,6 +45,14 @@ module LTL : sig
     t
 
 end
+
+(** By default the BMC routines ignore the register reset/clear/enable.
+
+    To keep them they should be converted into muxes at the front of the registers.
+    This function will extract a circuit from the LTL specification, transform it
+    optionally generating muxes for the reset/clear/enable signals, then rewrite the
+    LTL formula with the revised atomic propositions *)
+val transform_regs : reset:bool -> clear:bool -> enable:bool -> Props.LTL.path -> Props.LTL.path
 
 (** generate a BMC formula for a circuit and LTL formula over k>=0 time steps. *)
 val compile : ?verbose:bool -> 

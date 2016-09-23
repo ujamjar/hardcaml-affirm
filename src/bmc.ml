@@ -22,89 +22,7 @@
    * iterates to next time step
 *)
 
-module Copy = HardCaml.Transform.CopyTransform
-
-(* convert a register with reset/clear/enable, to a simple flipflop by
- * pushing the logic into muxes on the front end *)
-let simple_reg find r d q = 
-  let open HardCaml.Signal.Types in
-  let open HardCaml.Signal.Comb in
-  let open HardCaml.Signal.Seq in
-  let open HardCaml.Utils in
-  let reg_clock = (find << uid) r.reg_clock in
-  let reg_reset = (find << uid) r.reg_reset in
-  let reg_reset_value = (find << uid) r.reg_reset_value in
-  let reg_clear = (find << uid) r.reg_clear in
-  let reg_clear_value = (find << uid) r.reg_clear_value in
-  let reg_enable = (find << uid) r.reg_enable in
-
-  (* add default of zero for clear/reset *)
-  let zero = zero (width d) in
-  let def v = if v=empty then zero else v in
-  let reg_reset_value = def reg_reset_value in
-  let reg_clear_value = def reg_clear_value in
-
-  (* enable *)
-  let is_const_1 x = try const_value x = "1" with _ -> false in
-  let d = 
-    if reg_enable = empty then d
-    else if is_const_1 reg_enable then d 
-    else mux2 reg_enable d q 
-  in
-  (* clear *)
-  let d = if reg_clear <> empty then mux2 reg_clear reg_clear_value d else d in
-  (* reset *)
-  let d  = if reg_reset <> empty then mux2 reg_reset reg_reset_value d else d in
-
-  (* build register *)
-  { r with 
-    reg_clock; 
-    reg_reset=empty; reg_reset_value;
-    reg_clear=empty; reg_clear_value;
-    reg_enable=empty; 
-  }, d
-
-(* Convert registers to simple registers *)
-module SimplifyRegs = 
-struct 
-
-  open HardCaml.Signal.Types
-  open HardCaml.Signal.Comb
-  open HardCaml.Signal.Seq
-
-  let transform find signal = 
-    let dep n = find (uid (List.nth (deps signal) n)) in
-    match signal with
-    | Signal_reg(id,r) -> 
-        let q = wire (width signal) in
-        let spec, d = simple_reg find r (dep 0) q in
-        q <== reg spec empty d;
-        List.fold_left (--) q (names signal)
-    | _ -> Copy.transform find signal
-
-end
-
 module Unroller(B : HardCaml.Comb.S) = struct
-
-  (* Simplify and fix some problems.
-   
-     We need to generate the transition function, and properties.  
-
-     The transition function is generated for the registers
-     within the circuit.  The properties are outputs of the circuit.
-
-     I_{i} = Inputs at step i
-
-     S_{i} = Value of registers (state) at step i.
-
-     S_{0} = initial state - derived from reset/clear or user specified.
-
-     T_{i} = transition function from step i-1 to i.  It is a function
-             of I_{i} and S_{i-1}
-
-     P_{i} = properties at step i.  A function of I_{i} and S_{i}.
-
-  *)
 
   open HardCaml 
   open Signal.Types 
@@ -589,17 +507,15 @@ let format_results = function
     in
     `sat(k, prefixed @ List.map (fun (s,v) -> s, [|v|]) other)
 
-(* simplify register enable/clear etc *)
-let transform_regs ltl = 
+let transform_regs ~reset ~clear ~enable ltl = 
   let open HardCaml.Signal.Types in
   let props1 = Props.LTL.atomic_propositions ltl in
-  let props2 = HardCaml.Transform.rewrite_signals SimplifyRegs.transform props1 in
+  let props2 = Transform_state.(transform (to_muxes ~reset ~clear ~enable)) props1 in
   let props = List.map2 (fun p1 p2 -> uid p1, p2) props1 props2 in
   Props.LTL.map_atomic_propositions (fun x -> List.assoc (uid x) props) ltl
 
 let compile ?(verbose=false) ~k ltl = 
   let open HardCaml.Signal.Comb in
-  let ltl = transform_regs ltl in
   let atomic_props = Props.LTL.atomic_propositions ltl in
 
   let clauses, loop_k, props = Unroller_signal.unroller ~k:(k+1) atomic_props in
