@@ -53,11 +53,16 @@ formula is either proved, or the bound is not large enough.
 
 ```
 (* Generate properties from circuit *)
-let ltl = Props.LTL (g (f (p some_property_from_circuit)))
+let ltl = Props.LTL.(g (f (p some_property_from_circuit)))
 
 (* Run bounded model checker for 10 steps.  If satisifiable display
    result in waveform viewer. *)
-let () = Waves.run @@ Bmc.run ~verbose:true ~k:10 ltl
+let () = Waves.run @@ Bmc.run ~verbose:true ~k:10 (~: ltl)
 ```
+
+If a counter example is found the result can be viewed with
+HardCamlWaveTerm.
+
+![bmc-wave](https://cloud.githubusercontent.com/assets/5944099/18785518/83f9770c-8190-11e6-910c-a845179c40af.jpg)
 
 

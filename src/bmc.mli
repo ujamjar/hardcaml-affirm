@@ -18,8 +18,6 @@ module Unroller(B : HardCaml.Comb.S) : sig
 
 end
 
-type loop = [ `none | `all | `offset of int]
-
 module LTL : sig
 
   (** association list from the uid of the (original) property to the computed
@@ -30,7 +28,6 @@ module LTL : sig
 
   module M : Map.S
 
-  (** compile LTL property *)
   val compile_no_loop :
     map:t M.t ->
     props:prop_steps ->
@@ -44,9 +41,7 @@ module LTL : sig
     l:int ->
     t M.t * t
 
-  (** get loop clause (of k steps) *)
-  val get_loop : ?loop:loop -> loop_k:t list -> k:int -> unit -> t
-
+  (** compile LTL property *)
   val compile :
     props:prop_steps ->
     ltl:Props.LTL.path ->
@@ -56,10 +51,7 @@ module LTL : sig
 
 end
 
-(** generate a BMC formula for a circuit and LTL formula over k time steps.
- 
-    For a LTL formula with depth d, the circuit is unrolled (k+d) times.
-    The (default) loop check will be for k steps. *)
+(** generate a BMC formula for a circuit and LTL formula over k>=0 time steps. *)
 val compile : ?verbose:bool -> 
               k:int -> Props.LTL.path -> 
               t

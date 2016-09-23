@@ -597,7 +597,6 @@ let transform_regs ltl =
   let props = List.map2 (fun p1 p2 -> uid p1, p2) props1 props2 in
   Props.LTL.map_atomic_propositions (fun x -> List.assoc (uid x) props) ltl
 
-
 let compile ?(verbose=false) ~k ltl = 
   let open HardCaml.Signal.Comb in
   let ltl = transform_regs ltl in
