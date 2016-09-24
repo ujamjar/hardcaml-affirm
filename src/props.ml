@@ -102,6 +102,9 @@ module LTL = struct
   let (&:) a b = And(a,b)
   let (|:) a b = Or(a,b)
   let (~:) a = Not(a)
+  let (^:) a b = (a &: (~: b)) |: ((~: a) &: b)
+  let (==:) a b = ~: (a ^: b)
+  let (<>:) a b = a ^: b
   let (==>:) a b = (~: a) |: b
   let rec x ?(n=1) s = if n=0 then s else X (x ~n:(n-1) s)
   let u a b = U(a,b)

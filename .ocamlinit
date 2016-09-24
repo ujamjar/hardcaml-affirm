@@ -1,4 +1,5 @@
-#require "hardcaml,hardcaml-waveterm.lterm";;
+#camlp4o;;
+#require "hardcaml,hardcaml.syntax,hardcaml-waveterm.lterm";;
 #directory "_build/src";;
 #load "HardCamlAffirm.cma";;
 

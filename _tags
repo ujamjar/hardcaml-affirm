@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d0de9d36de5408f2910952001f2e28e1)
+# DO NOT EDIT (digest: 4c7a6937d04a3a91c3a00941acb22e7a)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -28,9 +28,17 @@ true: annot, bin_annot
 # Executable counter
 <examples/counter.{native,byte}>: pkg_hardcaml
 <examples/counter.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<examples/counter.{native,byte}>: pkg_hardcaml.syntax
 <examples/counter.{native,byte}>: use_HardCamlAffirm
+<examples/counter.{native,byte}>: custom
+# Executable tx-state
+<examples/tx_state.{native,byte}>: pkg_hardcaml
+<examples/tx_state.{native,byte}>: pkg_hardcaml-waveterm.lterm
+<examples/tx_state.{native,byte}>: pkg_hardcaml.syntax
+<examples/tx_state.{native,byte}>: use_HardCamlAffirm
 <examples/*.ml{,i,y}>: pkg_hardcaml
 <examples/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
+<examples/*.ml{,i,y}>: pkg_hardcaml.syntax
 <examples/*.ml{,i,y}>: use_HardCamlAffirm
-<examples/counter.{native,byte}>: custom
+<examples/tx_state.{native,byte}>: custom
 # OASIS_STOP

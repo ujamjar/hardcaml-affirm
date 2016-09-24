@@ -23,12 +23,13 @@ let transform_regs simple_reg find signal =
  * pushing the logic into muxes on the front end *)
 let to_muxes ~reset ~clear ~enable find r d q = 
   let open HardCaml.Utils in
-  let reg_clock = (find << uid) r.reg_clock in
-  let reg_reset = if reset then (find << uid) r.reg_reset else empty in
-  let reg_reset_value = (find << uid) r.reg_reset_value in
-  let reg_clear = if clear then (find << uid) r.reg_clear else empty in
-  let reg_clear_value = (find << uid) r.reg_clear_value in
-  let reg_enable = if enable then (find << uid) r.reg_enable else empty in
+  let find_uid x = find (uid x) in
+  let reg_clock = find_uid r.reg_clock in
+  let reg_reset = if reset then find_uid r.reg_reset else empty in
+  let reg_reset_value = find_uid r.reg_reset_value in
+  let reg_clear = if clear then find_uid r.reg_clear else empty in
+  let reg_clear_value = find_uid r.reg_clear_value in
+  let reg_enable = if enable then find_uid r.reg_enable else empty in
 
   (* add default of zero for clear/reset *)
   let zero = zero (width d) in
@@ -59,5 +60,12 @@ let to_muxes ~reset ~clear ~enable find r d q =
 let transform transform outputs = 
   HardCaml.Transform.rewrite_signals (transform_regs transform) outputs 
 
+module Make(I : Interface.S)(P : Interface.S) = struct
 
+  let transform t f i = 
+    let p = f i in
+    let o = List.map2 (fun (n,_) x -> n,x) P.(to_list t) @@ transform t (P.to_list p) in
+    P.map (fun (n,_) -> List.assoc n o) P.t
+
+end
 

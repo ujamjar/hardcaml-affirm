@@ -59,7 +59,10 @@ module LTL : sig
   val ( &: ) : path -> path -> path
   val ( |: ) : path -> path -> path
   val ( ~: ) : path -> path
+  val ( ^: ) : path -> path -> path
   val ( ==>: ) : path -> path -> path
+  val ( <>: ) : path -> path -> path
+  val ( ==: ) : path -> path -> path
   val x : ?n:int -> path -> path
   val u : path -> path -> path
   val ( -- ) : path -> path -> path

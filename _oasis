@@ -30,4 +30,12 @@ Executable counter
   Custom:             true
   CompiledObject:     best
   Install:            false
-  BuildDepends:       hardcaml-affirm
+  BuildDepends:       hardcaml.syntax,hardcaml-affirm
+
+Executable "tx-state"
+  Path:               examples
+  MainIs:             tx_state.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml.syntax,hardcaml-affirm

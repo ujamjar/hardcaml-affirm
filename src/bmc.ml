@@ -22,10 +22,40 @@
    * iterates to next time step
 *)
 
+
+
+module Init_state(B : HardCaml.Comb.S)(B_sim : HardCaml.Comb.S) = struct
+
+  open HardCaml.Signal.Types
+
+  let init_state signal = 
+    match signal with
+    | Signal_reg(_, r) as s ->
+      (* pick reset or clear value as init value XXX revisit this! *)
+      if r.reg_reset_value <> Signal_empty then B.const (const_value r.reg_reset_value)
+      else if r.reg_clear_value <> Signal_empty then B.const (const_value r.reg_clear_value)
+      else B.zero (width s)
+    | _ -> failwith "expecting register"
+
+
+  let init_from_sim sim signal = 
+    match sim with
+    | Some(sim) -> begin
+      try 
+        let v = !(sim.HardCaml.Cyclesim.Api.sim_lookup_reg (uid signal)) in
+        B.const (B_sim.to_bstr v)
+      with _ -> init_state signal
+    end
+    | None -> init_state signal
+
+end
+
 module Unroller(B : HardCaml.Comb.S) = struct
 
   open HardCaml 
   open Signal.Types 
+
+  module I = Init_state(B)(HardCaml.Bits.Comb.IntbitsList)
 
   let is_input s = 
     is_wire s && deps s = [ Signal_empty ]
@@ -131,17 +161,9 @@ module Unroller(B : HardCaml.Comb.S) = struct
       begin if (!t <> Signal_empty) then B.(<==) w (a s) end;
       w
 
-  let init_value = function
-    | Signal_reg(_, r) as s ->
-      (* pick reset or clear value as init value XXX revisit this! *)
-      if r.reg_reset_value <> Signal_empty then B.const (const_value r.reg_reset_value)
-      else if r.reg_clear_value <> Signal_empty then B.const (const_value r.reg_clear_value)
-      else B.zero (width s)
-    | _ -> failwith "expecting register"
-
   let reduce_and l = match l with [] -> B.vdd | _ -> B.reduce B.(&:) l 
 
-  let unroller ?(verbose=false) ~k props = 
+  let unroller ?(verbose=false) ?(init_state=I.init_state) ~k props = 
 
     let open Printf in
 
@@ -197,7 +219,7 @@ module Unroller(B : HardCaml.Comb.S) = struct
     (* initialisation *)
     let trans_0 =
       reduce_and @@
-        List.map2 (fun (_,reg_in) reg -> B.(reg_in ==: init_value reg)) (regs' 0) regs
+        List.map2 (fun (_,reg_in) reg -> B.(reg_in ==: init_state reg)) (regs' 0) regs
     in
 
     let () = if verbose then printf "trans_0\n" in
@@ -514,11 +536,11 @@ let transform_regs ~reset ~clear ~enable ltl =
   let props = List.map2 (fun p1 p2 -> uid p1, p2) props1 props2 in
   Props.LTL.map_atomic_propositions (fun x -> List.assoc (uid x) props) ltl
 
-let compile ?(verbose=false) ~k ltl = 
+let compile ?(verbose=false) ?init_state ~k ltl = 
   let open HardCaml.Signal.Comb in
   let atomic_props = Props.LTL.atomic_propositions ltl in
 
-  let clauses, loop_k, props = Unroller_signal.unroller ~k:(k+1) atomic_props in
+  let clauses, loop_k, props = Unroller_signal.unroller ?init_state ~k:(k+1) atomic_props in
   let props = Array.init (Array.length props - 1) (Array.get props) in (* drop final property *)
   let () = 
     if verbose then begin
@@ -533,8 +555,8 @@ let compile ?(verbose=false) ~k ltl =
   let props = LTL.compile ~props ~ltl ~loop_k ~k in
   Unroller_signal.reduce_and clauses &: props
 
-let run1 ?(verbose=false) ~k ltl = 
-  let cnf = Dimacs.convert @@ compile ~verbose ~k ltl in
+let run1 ?(verbose=false) ?init_state ~k ltl = 
+  let cnf = Dimacs.convert @@ compile ~verbose ?init_state ~k ltl in
   let () = if verbose then Printf.printf "  vars    = %i\n%!" (Sat.nvars cnf) in
   let () = if verbose then Printf.printf "  terms   = %i\n%!" (Sat.nterms cnf) in
   let map = Sat.name_map Sat.M.empty cnf in
@@ -542,16 +564,16 @@ let run1 ?(verbose=false) ~k ltl =
   | `unsat -> `unsat
   | `sat l -> format_results @@ `sat(k, l)
 
-let print ~k ltl = 
+let print ?init_state ~k ltl = 
   HardCaml.Rtl.Verilog.write print_string @@ HardCaml.Circuit.make "bmc" 
-    [ HardCaml.Signal.Comb.output "proposition" @@ compile ~k ltl ]
+    [ HardCaml.Signal.Comb.output "proposition" @@ compile ~k ?init_state ltl ]
 
-let run ?verbose ~k ltl = 
+let run ?verbose ?init_state ~k ltl = 
   (* run tests from 0..k *)
   let rec f i =
     if i>k then `unsat
     else 
-      match run1 ?verbose ~k:i ltl with
+      match run1 ?verbose ~k:i ?init_state ltl with
       | `unsat -> f (i+1)
       | `sat l -> `sat l
   in

@@ -2,12 +2,21 @@ open HardCaml
 open Signal.Types
 open Signal.Comb
 
+module Init_state(B : HardCaml.Comb.S)(B_sim : HardCaml.Comb.S) : sig
+
+  val init_state : t -> B.t
+
+  val init_from_sim : B_sim.t HardCaml.Cyclesim.Api.cyclesim option -> t -> B.t
+
+end
+
 (** Unroll circuit *)
 module Unroller(B : HardCaml.Comb.S) : sig
 
   (* Unroll circuit over k time steps.  Returns the transition function,
      loop clause(s) and properties over time *)
   val unroller : ?verbose:bool -> 
+                 ?init_state:(t -> B.t) ->
                  k:int -> t list -> 
                  B.t list * B.t list * ((uid * B.t) list array)
 
@@ -56,18 +65,24 @@ val transform_regs : reset:bool -> clear:bool -> enable:bool -> Props.LTL.path -
 
 (** generate a BMC formula for a circuit and LTL formula over k>=0 time steps. *)
 val compile : ?verbose:bool -> 
-              k:int -> Props.LTL.path -> 
+              ?init_state:(t -> t) ->
+              k:int -> 
+              Props.LTL.path -> 
               t
 
 (** run BMC with bound k *)
 val run1 : ?verbose:bool -> 
+           ?init_state:(t -> t) ->
            k:int -> Props.LTL.path -> 
            (int * ((string * string array) list)) Dimacs.result
 
-val print : k:int -> Props.LTL.path -> unit
+val print : ?init_state:(t -> t) ->
+            k:int -> 
+            Props.LTL.path -> unit
 
 (** Iteratively run BMC for up to k time steps *)
 val run : ?verbose:bool -> 
+          ?init_state:(t -> t) ->
           k:int -> Props.LTL.path -> 
           (int * ((string * string array) list)) Dimacs.result
 
