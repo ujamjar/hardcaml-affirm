@@ -39,3 +39,11 @@ Executable "tx-state"
   CompiledObject:     best
   Install:            false
   BuildDepends:       hardcaml.syntax,hardcaml-affirm
+
+Executable sim
+  Path:               examples
+  MainIs:             sim.ml
+  Custom:             true
+  CompiledObject:     best
+  Install:            false
+  BuildDepends:       hardcaml.syntax,hardcaml-affirm

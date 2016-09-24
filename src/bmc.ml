@@ -39,14 +39,11 @@ module Init_state(B : HardCaml.Comb.S)(B_sim : HardCaml.Comb.S) = struct
 
 
   let init_from_sim sim signal = 
-    match sim with
-    | Some(sim) -> begin
-      try 
-        let v = !(sim.HardCaml.Cyclesim.Api.sim_lookup_reg (uid signal)) in
-        B.const (B_sim.to_bstr v)
-      with _ -> init_state signal
-    end
-    | None -> init_state signal
+    try 
+      let v = !(sim.HardCaml.Cyclesim.Api.sim_lookup_signal (uid signal)) in
+      B.const (B_sim.to_bstr v)
+    with _ -> 
+      init_state signal
 
 end
 
@@ -555,6 +552,8 @@ let compile ?(verbose=false) ?init_state ~k ltl =
   let props = LTL.compile ~props ~ltl ~loop_k ~k in
   Unroller_signal.reduce_and clauses &: props
 
+type bmc_result = (int * ((string * string array) list)) Dimacs.result
+
 let run1 ?(verbose=false) ?init_state ~k ltl = 
   let cnf = Dimacs.convert @@ compile ~verbose ?init_state ~k ltl in
   let () = if verbose then Printf.printf "  vars    = %i\n%!" (Sat.nvars cnf) in
@@ -578,5 +577,80 @@ let run ?verbose ?init_state ~k ltl =
       | `sat l -> `sat l
   in
   f 0
-   
+ 
+open HardCaml
+
+type bmc = 
+  {
+    run : ?verbose:bool -> int -> bmc_result;
+    run1 : ?verbose:bool -> int -> bmc_result;
+  }
+
+module Gen(I : Interface.S)(O : Interface.S) = struct
+
+  let make name logic ltl = 
+    let inputs = I.(map (fun (n,b) -> Signal.Comb.input n b) t) in 
+    let outputs = logic inputs in
+
+    (* get ltl property *)
+    let ltl = ltl I.(map Props.LTL.p inputs) O.(map Props.LTL.p outputs) in
+
+    let run ?(verbose=false) k = run ~verbose ~k ltl in
+    let run1 ?(verbose=false) k = run1 ~verbose ~k ltl in
+    { run; run1 }
+
+end
+
+module Gen_with_sim(B : Comb.S)(I : Interface.S)(O : Interface.S) = struct
+
+  module S = Cyclesim.Make(B)
+  module Cs = Cyclesim.Api
+  module Init = Init_state(Signal.Comb)(B)
+
+  type sim = 
+    {
+      sim : S.cyclesim;
+      inputs : B.t ref I.t;
+      outputs : B.t ref O.t;
+      next : B.t ref O.t;
+    }
+
+  let make name logic ltl = 
+    let inputs = I.(map (fun (n,b) -> Signal.Comb.input n b) t) in 
+    let outputs = logic inputs in
+    let circuit = Circuit.make name 
+      (O.to_list (O.map2 (fun (n,_) s -> Signal.Comb.output n s) O.t outputs))
+    in
+
+    (* simulator *)
+    let sim = S.make 
+      ~internal:(Some(fun s -> Signal.Types.names s <> []))
+      circuit 
+    in
+    let sim_inputs = I.(map (fun (n,b) -> try Cs.in_port sim n with _ -> ref B.(zero b)) t) in
+    let sim_outputs = O.(map (fun (n,b) -> try Cs.out_port sim n with _ -> ref B.(zero b)) t) in
+    let sim_next = O.(map (fun (n,b) -> try Cs.out_port_next sim n with _ -> ref B.(zero b)) t) in
+
+    (* get ltl property *)
+    let ltl = ltl I.(map Props.LTL.p inputs) O.(map Props.LTL.p outputs) in
+
+    let run ?(verbose=false) k = 
+      let init_state = Init.init_from_sim sim in
+      run ~init_state ~k ltl 
+    in
+    let run1 ?(verbose=false) k = 
+      let init_state = Init.init_from_sim sim in
+      run1 ~init_state ~k ltl 
+    in
+    { run; run1 },
+    {
+      sim;
+      inputs = sim_inputs;
+      outputs = sim_outputs;
+      next = sim_next;
+    }
+
+end
+
+
 

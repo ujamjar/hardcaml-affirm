@@ -6,7 +6,7 @@ module Init_state(B : HardCaml.Comb.S)(B_sim : HardCaml.Comb.S) : sig
 
   val init_state : t -> B.t
 
-  val init_from_sim : B_sim.t HardCaml.Cyclesim.Api.cyclesim option -> t -> B.t
+  val init_from_sim : B_sim.t HardCaml.Cyclesim.Api.cyclesim -> t -> B.t
 
 end
 
@@ -70,11 +70,13 @@ val compile : ?verbose:bool ->
               Props.LTL.path -> 
               t
 
+type bmc_result = (int * ((string * string array) list)) Dimacs.result
+
 (** run BMC with bound k *)
 val run1 : ?verbose:bool -> 
            ?init_state:(t -> t) ->
            k:int -> Props.LTL.path -> 
-           (int * ((string * string array) list)) Dimacs.result
+           bmc_result
 
 val print : ?init_state:(t -> t) ->
             k:int -> 
@@ -84,5 +86,36 @@ val print : ?init_state:(t -> t) ->
 val run : ?verbose:bool -> 
           ?init_state:(t -> t) ->
           k:int -> Props.LTL.path -> 
-          (int * ((string * string array) list)) Dimacs.result
+          bmc_result
 
+(** Interface flow *)
+
+type bmc = 
+  {
+    run : ?verbose:bool -> int -> bmc_result;
+    run1 : ?verbose:bool -> int -> bmc_result;
+  }
+
+module Gen(I : Interface.S)(O : Interface.S) : sig
+
+  open Props.LTL
+  val make : string -> (t I.t -> t O.t) -> (path I.t -> path O.t -> path) -> bmc 
+
+end
+
+module Gen_with_sim(B : Comb.S)(I : Interface.S)(O : Interface.S) : sig
+
+  module S : module type of Cyclesim.Make(B)
+
+  type sim = 
+    {
+      sim : S.cyclesim;
+      inputs : B.t ref I.t;
+      outputs : B.t ref O.t;
+      next : B.t ref O.t;
+    }
+
+  open Props.LTL
+  val make : string -> (t I.t -> t O.t) -> (path I.t -> path O.t -> path) -> bmc * sim
+
+end
