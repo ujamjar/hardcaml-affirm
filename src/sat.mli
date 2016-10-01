@@ -32,3 +32,15 @@ val nvars : relabelled sat -> int
 
 val fold : ('a -> terms -> 'a) -> 'a -> 'b sat -> 'a
 
+(** convert a single bit signal to SAT *)
+val convert : HardCaml.Signal.Comb.t -> relabelled sat
+
+(** run SAT solver, parse and return results *)
+val run : ?solver:string -> relabelled sat -> int list Sattools.Result.t
+
+(** partition (sorted) list into sublists with equal predicates *)
+val partition : ('a -> 'a -> bool) -> 'a list -> 'a list list
+
+(** convert output of SAT tool to human readable format *)
+val report : name_map -> int list Sattools.Result.t -> (string * string) list Sattools.Result.t
+

@@ -6,5 +6,5 @@ module Widget : module type of HardCamlWaveLTerm.Widget.Make(B)(W)
 val to_waves : int * ((string * string array) list) -> W.waves
 
 (** run interactive waveform viewer *)
-val run : (int * ((string * string array) list)) Dimacs.result -> unit
+val run : (int * ((string * string array) list)) Sattools.Result.t -> unit
 

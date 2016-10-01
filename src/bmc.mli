@@ -70,7 +70,7 @@ val compile : ?verbose:bool ->
               Props.LTL.path -> 
               t
 
-type bmc_result = (int * ((string * string array) list)) Dimacs.result
+type bmc_result = (int * ((string * string array) list)) Sattools.Result.t
 
 (** run BMC with bound k *)
 val run1 : ?verbose:bool -> 

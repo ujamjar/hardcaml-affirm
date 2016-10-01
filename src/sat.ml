@@ -335,4 +335,61 @@ let rec fold f a = function
     fold f a !arg
   | E -> a
 
+module T = HardCaml.Transform.MakePureCombTransform(Comb)
+
+let convert s = 
+  let open HardCaml.Signal.Comb in
+  if width s <> 1 then failwith "expecting single bit property"
+  else
+    let cnf = List.hd (T.rewrite_signals T.transform [s]) in
+    relabel (List.hd cnf) 
+
+let run ?(solver="dimacs-mini") cnf = 
+  let module S = (val Sattools.Libs.get_solver solver) in
+  let s = S.create () in
+  S.add_clause s [ nvars cnf ];
+  fold (fun () -> List.iter (S.add_clause s)) () cnf;
+  let model = S.solve_with_model s in
+  S.destroy s;
+  model
+
+let partition eq l =
+  let rec f n p l = 
+    match l with
+    | [] -> [p]
+    | h :: tl when eq h n -> f n (h :: p) tl
+    | h :: tl             -> p :: f h [] l
+  in
+  match l with
+  | [] -> []
+  | h :: _ -> f h [] l
+
+let to_vec l = 
+  let len = 1 + List.fold_left (fun m (_,n,_) -> max m n) 0 l in
+  let name = function (n,_,_) :: _ -> n |  [] -> failwith "bad vector" in
+  let rec find_bit b = function 
+    | [] -> None 
+    | (_,b',v) :: tl -> if b'=b then Some(v) else find_bit b tl 
+  in
+  let value = String.init len 
+    (fun i -> 
+      match find_bit (len-i-1) l with 
+      | None -> '?' 
+      | Some(1) -> '1' 
+      | _ -> '0')
+  in
+  name l, value
+
+let report map = function
+  | `unsat -> `unsat
+  | `sat x ->
+    let x = List.filter (fun x -> M.mem (abs x) map) x in
+    let x = List.sort compare @@ List.flatten @@ List.map 
+      (fun x -> 
+        let l = M.find (abs x) map in
+        List.map (fun (n,b) -> (n, b, if x<0 then 0 else 1)) l) 
+      x 
+    in
+    let x = List.map to_vec @@ partition (fun (n,_,_) (m,_,_) -> n=m) x in
+    `sat x
 

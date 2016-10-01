@@ -15,9 +15,9 @@ Library HardCamlAffirm
   Path:          src
   Findlibname:   hardcaml-affirm
   Pack:          true
-  Modules:       Props, Sat, Dimacs, Transform_state, NuSMV, Bmc, Waves
-  BuildDepends:  hardcaml, hardcaml-waveterm.lterm
-  XMETARequires: hardcaml, hardcaml-waveterm.lterm
+  Modules:       Props, Sat, Transform_state, NuSMV, Bmc, Waves
+  BuildDepends:  hardcaml, sattools, hardcaml-waveterm.lterm
+  XMETARequires: hardcaml, sattools, hardcaml-waveterm.lterm
 
 SourceRepository master
   Type:     git

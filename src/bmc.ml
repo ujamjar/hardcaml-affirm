@@ -514,7 +514,7 @@ let format_results = function
     let prefixed, other = List.partition (fun (x,_) -> is_prefixed x) s in
     let prefixed = List.map (fun (s,v) -> get_name s, get_cycle s, v) prefixed in
     let prefixed = List.sort compare prefixed in
-    let prefixed = Dimacs.partition (fun (n,_,_) (m,_,_) -> m=n) prefixed in
+    let prefixed = Sat.partition (fun (n,_,_) (m,_,_) -> m=n) prefixed in
     let prefixed = List.map 
         (function
           | [] -> "?", [||]
@@ -552,14 +552,14 @@ let compile ?(verbose=false) ?init_state ~k ltl =
   let props = LTL.compile ~props ~ltl ~loop_k ~k in
   Unroller_signal.reduce_and clauses &: props
 
-type bmc_result = (int * ((string * string array) list)) Dimacs.result
+type bmc_result = (int * ((string * string array) list)) Sattools.Result.t
 
 let run1 ?(verbose=false) ?init_state ~k ltl = 
-  let cnf = Dimacs.convert @@ compile ~verbose ?init_state ~k ltl in
+  let cnf = Sat.convert @@ compile ~verbose ?init_state ~k ltl in
   let () = if verbose then Printf.printf "  vars    = %i\n%!" (Sat.nvars cnf) in
   let () = if verbose then Printf.printf "  terms   = %i\n%!" (Sat.nterms cnf) in
   let map = Sat.name_map Sat.M.empty cnf in
-  match Dimacs.report map @@ Dimacs.run cnf with
+  match Sat.report map @@ Sat.run cnf with
   | `unsat -> `unsat
   | `sat l -> format_results @@ `sat(k, l)
 

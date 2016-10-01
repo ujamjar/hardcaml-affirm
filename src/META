@@ -1,8 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 26989ac4111ed12182d1b6a6afa0c26e)
+# DO NOT EDIT (digest: 19905c0deca875264aaac045275a20d5)
 version = "1.1"
 description = "Verification tools for HardCaml"
-requires = "hardcaml hardcaml-waveterm.lterm"
+requires = "hardcaml sattools hardcaml-waveterm.lterm"
 archive(byte) = "HardCamlAffirm.cma"
 archive(byte, plugin) = "HardCamlAffirm.cma"
 archive(native) = "HardCamlAffirm.cmxa"
