@@ -494,6 +494,8 @@ module LTL = struct
 
 end
 
+open HardCamlBloop
+
 let format_results = function
   | `unsat -> `unsat
   | `sat(k,s) -> 
@@ -514,7 +516,7 @@ let format_results = function
     let prefixed, other = List.partition (fun (x,_) -> is_prefixed x) s in
     let prefixed = List.map (fun (s,v) -> get_name s, get_cycle s, v) prefixed in
     let prefixed = List.sort compare prefixed in
-    let prefixed = Sat.partition (fun (n,_,_) (m,_,_) -> m=n) prefixed in
+    let prefixed = Cnf.partition (fun (n,_,_) (m,_,_) -> m=n) prefixed in
     let prefixed = List.map 
         (function
           | [] -> "?", [||]
@@ -555,11 +557,11 @@ let compile ?(verbose=false) ?init_state ~k ltl =
 type bmc_result = (int * ((string * string array) list)) Sattools.Result.t
 
 let run1 ?(verbose=false) ?init_state ~k ltl = 
-  let cnf = Sat.convert @@ compile ~verbose ?init_state ~k ltl in
-  let () = if verbose then Printf.printf "  vars    = %i\n%!" (Sat.nvars cnf) in
-  let () = if verbose then Printf.printf "  terms   = %i\n%!" (Sat.nterms cnf) in
-  let map = Sat.name_map Sat.M.empty cnf in
-  match Sat.report map @@ Sat.run cnf with
+  let cnf = Cnf.convert @@ compile ~verbose ?init_state ~k ltl in
+  let () = if verbose then Printf.printf "  vars    = %i\n%!" (Cnf.nvars cnf) in
+  let () = if verbose then Printf.printf "  terms   = %i\n%!" (Cnf.nterms cnf) in
+  let map = Cnf.name_map Cnf.M.empty cnf in
+  match Cnf.report map @@ Cnf.run cnf with
   | `unsat -> `unsat
   | `sat l -> format_results @@ `sat(k, l)
 

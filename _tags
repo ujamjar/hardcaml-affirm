@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 1ac55af2f4cf8d830be4005d0255e081)
+# DO NOT EDIT (digest: a6fe142963c4c45bdd73fb9e47cad562)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -17,16 +17,17 @@ true: annot, bin_annot
 # Library HardCamlAffirm
 "src/HardCamlAffirm.cmxs": use_HardCamlAffirm
 "src/props.cmx": for-pack(HardCamlAffirm)
-"src/sat.cmx": for-pack(HardCamlAffirm)
 "src/transform_state.cmx": for-pack(HardCamlAffirm)
 "src/NuSMV.cmx": for-pack(HardCamlAffirm)
 "src/bmc.cmx": for-pack(HardCamlAffirm)
 "src/waves.cmx": for-pack(HardCamlAffirm)
 <src/*.ml{,i,y}>: pkg_hardcaml
+<src/*.ml{,i,y}>: pkg_hardcaml-bloop
 <src/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
 <src/*.ml{,i,y}>: pkg_sattools
 # Executable counter
 <examples/counter.{native,byte}>: pkg_hardcaml
+<examples/counter.{native,byte}>: pkg_hardcaml-bloop
 <examples/counter.{native,byte}>: pkg_hardcaml-waveterm.lterm
 <examples/counter.{native,byte}>: pkg_hardcaml.syntax
 <examples/counter.{native,byte}>: pkg_sattools
@@ -34,6 +35,7 @@ true: annot, bin_annot
 <examples/counter.{native,byte}>: custom
 # Executable tx-state
 <examples/tx_state.{native,byte}>: pkg_hardcaml
+<examples/tx_state.{native,byte}>: pkg_hardcaml-bloop
 <examples/tx_state.{native,byte}>: pkg_hardcaml-waveterm.lterm
 <examples/tx_state.{native,byte}>: pkg_hardcaml.syntax
 <examples/tx_state.{native,byte}>: pkg_sattools
@@ -41,11 +43,13 @@ true: annot, bin_annot
 <examples/tx_state.{native,byte}>: custom
 # Executable sim
 <examples/sim.{native,byte}>: pkg_hardcaml
+<examples/sim.{native,byte}>: pkg_hardcaml-bloop
 <examples/sim.{native,byte}>: pkg_hardcaml-waveterm.lterm
 <examples/sim.{native,byte}>: pkg_hardcaml.syntax
 <examples/sim.{native,byte}>: pkg_sattools
 <examples/sim.{native,byte}>: use_HardCamlAffirm
 <examples/*.ml{,i,y}>: pkg_hardcaml
+<examples/*.ml{,i,y}>: pkg_hardcaml-bloop
 <examples/*.ml{,i,y}>: pkg_hardcaml-waveterm.lterm
 <examples/*.ml{,i,y}>: pkg_hardcaml.syntax
 <examples/*.ml{,i,y}>: pkg_sattools
