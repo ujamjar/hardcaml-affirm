@@ -105,6 +105,7 @@ let counter_is =
   Array.get counter_is
 
 (* Run tests *)
+open HardCamlAffirm
 
 let tests = List.map snd @@ List.filter fst @@ [
   !repeatedly >= 0,     (fun () -> Props.LTL.(g (f (p (counter_is !repeatedly)))));

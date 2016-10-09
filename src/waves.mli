@@ -1,6 +1,6 @@
 module B : HardCaml.Comb.S
 module W : HardCamlWaveTerm.Wave.W with type elt = B.t
-module Widget : module type of HardCamlWaveLTerm.Widget.Make(B)(W)
+module Widget : module type of HardCamlWaveTerm.Widget.Make(B)(W)
 
 (** convert the data from a sat result from Bmc.run to waves *)
 val to_waves : int * ((string * string array) list) -> W.waves

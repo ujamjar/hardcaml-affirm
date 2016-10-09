@@ -2,7 +2,7 @@
 
 module B = HardCaml.Bits.Comb.IntbitsList
 module W = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B))
-module Widget = HardCamlWaveLTerm.Widget.Make(B)(W)
+module Widget = HardCamlWaveTerm.Widget.Make(B)(W)
 
 let to_state3 str = 
   let open B in

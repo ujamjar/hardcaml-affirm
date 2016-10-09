@@ -1,6 +1,6 @@
 version = "1.1"
 description = "Verification tools for HardCaml"
-requires = "astring hardcaml hardcaml-bloop sattools hardcaml-waveterm"
+requires = "hardcaml hardcaml-bloop sattools hardcaml-waveterm.lterm"
 archive(byte) = "HardCamlAffirm.cma"
 archive(byte, plugin) = "HardCamlAffirm.cma"
 archive(native) = "HardCamlAffirm.cmxa"

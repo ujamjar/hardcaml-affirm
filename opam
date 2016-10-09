@@ -14,12 +14,14 @@ remove: [
   [make "uninstall"]
 ]
 depends: [
-  "ocamlfind"
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build}
   "base-bytes"
-  "camlp4"
+  "astring"
   "hardcaml"
   "sattools"
   "hardcaml-bloop"
   "hardcaml-waveterm"
 ]
-available: [ "ocaml-version" >= "4.01.0" ]
+available: [ "ocaml-version" >= "4.02.0" ]

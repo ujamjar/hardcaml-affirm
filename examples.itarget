@@ -1,0 +1,3 @@
+examples/counter.native
+examples/tx_state.native
+examples/sim.native

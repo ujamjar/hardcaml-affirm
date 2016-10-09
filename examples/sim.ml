@@ -55,7 +55,7 @@ let tb sim show cycles =
   let sim, viewer = 
     let module W = HardCamlWaveTerm.Wave.Make(HardCamlWaveTerm.Wave.Bits(B)) in
     let module Ws = HardCamlWaveTerm.Sim.Make(B)(W) in
-    let module Ui = HardCamlWaveLTerm.Widget.Make(B)(W) in
+    let module Ui = HardCamlWaveTerm.Widget.Make(B)(W) in
     let sim, waves = Ws.wrap sim in
     sim, (fun () -> Ui.run W.{ cfg=default; waves } )
   in
