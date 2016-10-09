@@ -24,6 +24,7 @@ opam init
 
 eval `opam config env`
 
+open install oasis
 opam pin add -n lambda-term git://github.com/andrewray/lambda-term#move-focus
 opam pin add -n hardcaml git://github.com/ujamjar/hardcaml
 opam pin add -n hardcaml-waveterm git://github.com/ujamjar/hardcaml-waveterm
