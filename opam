@@ -4,7 +4,7 @@ authors: "andy.ray@ujamjar.com"
 homepage: "https://github.com/ujamjar/hardcaml-affirm"
 dev-repo: "https://github.com/ujamjar/hardcaml-affirm"
 bug-reports: "https://github.com/ujamjar/hardcaml-affirm/issues"
-build: [ [ "ocaml" "pkg/pkg.ml" "build ] ]
+build: [ [ "ocaml" "pkg/pkg.ml" "build" ] ]
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
