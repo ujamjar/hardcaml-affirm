@@ -24,8 +24,11 @@ opam init
 
 eval `opam config env`
 
+opam pin add -n lambda-term git://github.com/andrewray/lambda-term#move-focus
 opam pin add -n hardcaml git://github.com/ujamjar/hardcaml
+opam pin add -n hardcaml-waveterm git://github.com/ujamjar/hardcaml-waveterm
 opam pin add -n sattools git://github.com/ujamjar/sattools
+opam pin add -n hardcaml-bloop git://github.com/ujamjar/hardcaml-bloop
 
 opam pin add -n $OPAMPKG -k git .
 opam depext -y $DEPPKGS $OPAMPKG
