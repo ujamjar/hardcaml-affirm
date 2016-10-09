@@ -7,12 +7,7 @@ bug-reports: "https://github.com/ujamjar/hardcaml-affirm/issues"
 build: [
   [make "all"]
 ]
-install: [
-  [make "install"]
-]
-remove: [
-  [make "uninstall"]
-]
+install: [ [ "ocaml" "pkg/pkg.ml" "build ] ]
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
