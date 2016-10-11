@@ -1,5 +1,7 @@
 # hardcaml-affirm
 
+[![Build Status](https://travis-ci.org/ujamjar/hardcaml-affirm.svg?branch=master)](https://travis-ci.org/ujamjar/hardcaml-affirm)
+
 Sequential verification tools for HardCaml.
 
 ## NuSMV backend
