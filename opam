@@ -11,9 +11,9 @@ depends: [
   "topkg" {build}
   "base-bytes"
   "astring"
-  "hardcaml"
+  "hardcaml" { >= "1.2.0" & < "2.0.0" }
   "sattools"
   "hardcaml-bloop"
-  "hardcaml-waveterm"
+  "hardcaml-waveterm" { >= "0.2" }
 ]
 available: [ "ocaml-version" >= "4.02.0" ]
