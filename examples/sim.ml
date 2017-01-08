@@ -19,8 +19,12 @@ open Signal.Seq
 open HardCamlAffirm
 module B = Bits.Comb.IntbitsList 
 
-module I = interface start[1] end
-module O = interface is{|4|}[1] end
+module I = struct
+  type 'a t = { start : 'a[@bits 1]; }[@@deriving hardcaml]
+end
+module O = struct
+  type 'a t = { is : 'a array[@length 4][@bits 1]; }[@@deriving hardcaml]
+end
 
 let test = try int_of_string Sys.argv.(1) with _ -> failwith "specify which test to run"
 

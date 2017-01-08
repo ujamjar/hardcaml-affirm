@@ -13,8 +13,18 @@ open Signal.Comb
 open Signal.Seq
 open HardCamlAffirm
 
-module I = interface en[1] d[1] end
-module P = interface (i : I) q[1] end
+module I = struct
+  type 'a t = { 
+    en : 'a[@bits 1]; 
+    d : 'a[@bits 1]; 
+  }[@@deriving hardcaml]
+end
+module P = struct
+  type 'a t = { 
+    i : 'a I.t; 
+    q : 'a[@bits 1]; 
+  }[@@deriving hardcaml]
+end
 module T = Transform_state.Make(I)(P)
 
 let f i = { P.q = reg r_full i.I.en i.I.d; 
