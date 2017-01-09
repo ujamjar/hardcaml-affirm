@@ -18,3 +18,8 @@ depends: [
   "ppx_deriving_hardcaml" { >= "1.1.0" }
 ]
 available: [ ocaml-version >= "4.02.0" ]
+name: "hardcaml-affirm"
+version: "0.1.2"
+license: "ISC"
+substs:[ "pkg/META" ]
+
