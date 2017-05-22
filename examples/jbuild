@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(executables
+ ((names (tx_state sim counter))
+  (libraries (hardcaml-affirm))
+  (preprocess (pps (ppx_deriving_omp ppx_deriving_hardcaml)))))

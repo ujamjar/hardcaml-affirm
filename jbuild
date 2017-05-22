@@ -1,0 +1,3 @@
+(alias
+ ((name tests)
+  (deps (examples/tx_state.exe examples/sim.exe examples/counter.exe))))

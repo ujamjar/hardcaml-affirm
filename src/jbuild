@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+ ((name HardCamlAffirm)
+  (public_name hardcaml-affirm)
+  (libraries (hardcaml hardcaml-waveterm hardcaml-bloop sattools astring))))

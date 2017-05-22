@@ -1,7 +1,0 @@
-"src": include
-<src/*.ml{,i}>: for-pack(HardCamlAffirm)
-
-"examples": include
-<examples/*.ml>: package(ppx_deriving_hardcaml)
-
-true: package(hardcaml), package(hardcaml-waveterm), package(hardcaml-bloop), package(sattools), package(astring)

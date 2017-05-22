@@ -6,3 +6,5 @@ setup.data
 setup.log
 docs/
 mkdocs.yml
+.merlin
+*.install
